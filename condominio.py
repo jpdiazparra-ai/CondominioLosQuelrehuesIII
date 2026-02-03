@@ -37,6 +37,14 @@ PROPIETARIOS_CSV_URL = (
     "pub?gid=782319858&single=true&output=csv"
 )
 
+TD23_CSV_URL = OBLIGACIONES_CSV_URL
+
+MANTENCION_CSV_URL = (
+    "https://docs.google.com/spreadsheets/d/e/"
+    "2PACX-1vREdYwR32RK_ecff9UJ-DdGNjvfdnoO55jpToO-KLG62izQTqFovnWUTM-ttfmR9DNt6N1lSNKMzkjZ/"
+    "pub?gid=1564429404&single=true&output=csv"
+)
+
 
 def _normalize_colname(c: str) -> str:
     c = str(c).strip()
@@ -240,6 +248,44 @@ def build_obligaciones_vs_pagos(
     return oblig_anual, out
 
 
+def load_td23_table(url: str) -> pd.DataFrame:
+    df_raw = pd.read_csv(url, header=None, dtype=str)
+    header_row = None
+    header_cols = None
+    header_idx = None
+    for i, row in df_raw.head(50).iterrows():
+        norm = [_normalize_colname(c) for c in row.tolist()]
+        if "cc" in norm and "monto" in norm and "total" in norm:
+            header_row = i
+            header_cols = norm
+            header_idx = [idx for idx, val in enumerate(norm) if val in ("cc", "monto", "obs", "total")]
+            break
+    if header_row is None or header_idx is None:
+        return pd.DataFrame(columns=["cc", "monto", "obs", "total"])
+
+    df = df_raw.iloc[header_row + 1 :].copy()
+    df = df.iloc[:, header_idx]
+    df.columns = [header_cols[idx] for idx in header_idx]
+    df = df.dropna(how="all")
+    df = df.rename(columns={"cc": "cc", "monto": "monto", "obs": "obs", "total": "total"})
+    df = df[df["cc"].notna()]
+    return df
+
+
+def load_mantencion_table(url: str) -> pd.DataFrame:
+    df = pd.read_csv(url)
+    df.columns = [_normalize_colname(c) for c in df.columns]
+    col_parc = _pick_col(list(df.columns), ["parcela", "n_parcela", "numero_parcela", "lote", "unidad", "sitio"])
+    col_val = _pick_col(list(df.columns), ["monto", "valor", "mantencion", "mantenimiento", "total"])
+    if not col_parc or not col_val:
+        return pd.DataFrame(columns=["parcela", "mantencion"])
+    out = pd.DataFrame()
+    out["parcela"] = pd.to_numeric(df[col_parc].astype(str).str.replace(r"[^\d]", "", regex=True), errors="coerce")
+    out["mantencion"] = _parse_monto_series(df[col_val])
+    out = out.dropna(subset=["parcela"])
+    return out
+
+
 def run_streamlit():
     import streamlit as st
 
@@ -287,28 +333,123 @@ def run_streamlit():
         total_neto = float(df_y["neto"].sum()) if not df_y.empty else 0.0
         best_year = int(df_y.sort_values("neto", ascending=False)["anio"].iloc[0]) if not df_y.empty else 0
 
+        # KPI de pendientes (desde Obligaciones)
+        try:
+            df_obl_g = _load(OBLIGACIONES_CSV_URL, CACHE_VERSION, {"ano", "anio", "año", "parcela", "gc"})
+            df_ing_g2 = _load(INGRESOS_CSV_URL, CACHE_VERSION, {"fecha", "parcela", "abono"})
+            cols_ing_o = list(df_ing_g2.columns)
+            cand_concepto = ["detalle", "concepto", "glosa", "descripcion", "tipo", "categoria", "cc", "ccc", "medio"]
+            concepto_col_val = next((c for c in cand_concepto if c in cols_ing_o), None)
+            oblig_anual_g, tabla_g = build_obligaciones_vs_pagos(
+                df_obl_g,
+                df_ing_g2,
+                concepto_col=concepto_col_val,
+                include_keywords=["gasto", "gc"],
+                exclude_keywords=["proyecto"],
+            )
+            if not tabla_g.empty:
+                gc_total_parcela = float(tabla_g["gc_total"].max())
+                total_gc = gc_total_parcela * 20
+                total_pagado_gc = float(tabla_g["pagado"].sum())
+                pendiente_gc = float(tabla_g["pendiente"].clip(lower=0).sum())
+                pct_no_pago = (pendiente_gc / total_gc) * 100 if total_gc > 0 else 0.0
+                pendiente_mant = 0.0
+                pendiente_proy = 0.0
+
+                col_cc_ing = _pick_col(cols_ing_o, ["cc", "categoria", "rubro", "ccc"])
+                col_abono_ing = _pick_col(cols_ing_o, ["abono"])
+                col_parc_ing = _pick_col(cols_ing_o, ["parcela"])
+                if col_parc_ing and col_abono_ing:
+                    ing_all = df_ing_g2.copy()
+                    ing_all["parcela"] = pd.to_numeric(
+                        ing_all[col_parc_ing].astype(str).str.replace(r"[^\d]", "", regex=True),
+                        errors="coerce",
+                    )
+                    ing_all["monto_norm"] = _parse_monto_series(ing_all[col_abono_ing])
+                    ing_all = ing_all.dropna(subset=["parcela", "monto_norm"])
+
+                    # Pendiente mantención
+                    df_mant_g = load_mantencion_table(MANTENCION_CSV_URL)
+                    if not df_mant_g.empty and col_cc_ing:
+                        mant = df_mant_g.groupby("parcela", as_index=False)["mantencion"].sum()
+                        cc_text = (
+                            ing_all[col_cc_ing]
+                            .astype(str)
+                            .str.lower()
+                            .str.replace("á", "a")
+                            .str.replace("é", "e")
+                            .str.replace("í", "i")
+                            .str.replace("ó", "o")
+                            .str.replace("ú", "u")
+                            .str.replace("ñ", "n")
+                        )
+                        mask_mant = cc_text.str.contains("mantencion", regex=False) | cc_text.str.contains("mantenimiento", regex=False)
+                        pagos_m = (
+                            ing_all[mask_mant]
+                            .groupby("parcela", as_index=False)["monto_norm"]
+                            .sum()
+                            .rename(columns={"monto_norm": "pagado_mant"})
+                        )
+                        mant = mant.merge(pagos_m, on="parcela", how="left").fillna({"pagado_mant": 0})
+                        pendiente_mant = float((mant["mantencion"] - mant["pagado_mant"]).clip(lower=0).sum())
+
+                    # Pendiente proyecto por CC desde TD 2.3
+                    df_td_g = load_td23_table(TD23_CSV_URL)
+                    if not df_td_g.empty and col_cc_ing:
+                        ing_cc = ing_all.copy()
+                        ing_cc["cc_norm"] = ing_cc[col_cc_ing].astype(str).str.lower()
+                        parcelas = sorted(tabla_g["parcela"].dropna().unique().tolist())
+                        for _, row in df_td_g.iterrows():
+                            cc_name = str(row.get("cc", "")).strip()
+                            if not cc_name:
+                                continue
+                            monto_cc = float(_parse_monto_series(pd.Series([row.get("monto")])).iloc[0] or 0)
+                            if monto_cc == 0:
+                                continue
+                            mask_cc = ing_cc["cc_norm"].str.contains(cc_name.lower(), regex=False)
+                            pagos_cc = (
+                                ing_cc[mask_cc]
+                                .groupby("parcela", as_index=False)["monto_norm"]
+                                .sum()
+                                .set_index("parcela")
+                            )
+                            pagos_series = pagos_cc["monto_norm"].reindex(parcelas, fill_value=0)
+                            pendiente_proy += float((monto_cc - pagos_series).clip(lower=0).sum())
+
+                pendiente_total = pendiente_gc + pendiente_mant + pendiente_proy
+            else:
+                pendiente_gc = 0.0
+                pendiente_total = 0.0
+                pendiente_mant = 0.0
+                pendiente_proy = 0.0
+                pct_no_pago = 0.0
+        except Exception:
+            pendiente_gc = 0.0
+            pendiente_total = 0.0
+            pendiente_mant = 0.0
+            pendiente_proy = 0.0
+            pct_no_pago = 0.0
+
         st.markdown(
             """
             <style>
-            .kpi-grid-3 {display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin:8px 0 18px 0;}
-            .kpi-card {background:#fff;border:1px solid #E2E8F0;border-radius:16px;padding:18px 20px;box-shadow:0 2px 12px rgba(15,23,42,0.06);position:relative;}
+            .kpi-row {display:flex;gap:16px;overflow-x:auto;padding-bottom:6px;margin:8px 0 18px 0;}
+            .kpi-card {min-width:220px;flex:0 0 220px;background:#fff;border:1px solid #E2E8F0;border-radius:16px;padding:14px 16px;box-shadow:0 2px 12px rgba(15,23,42,0.06);position:relative;}
             .kpi-card:before {content:"";position:absolute;left:0;top:0;height:100%;width:6px;border-radius:16px 0 0 16px;}
-            .kpi-title {font-size:12px;letter-spacing:0.08em;color:#6B7280;font-weight:700;}
-            .kpi-value {font-size:24px;font-weight:800;margin-top:6px;}
-            .kpi-sub {font-size:12px;color:#94A3B8;margin-top:6px;}
+            .kpi-title {font-size:11px;letter-spacing:0.08em;color:#6B7280;font-weight:700;}
+            .kpi-value {font-size:22px;font-weight:800;margin-top:6px;}
+            .kpi-sub {font-size:11px;color:#94A3B8;margin-top:6px;}
             .kpi-green:before {background:#22C55E;}
             .kpi-red:before {background:#EF4444;}
             .kpi-navy:before {background:#0B1F2A;}
             .kpi-teal:before {background:#2C5B4A;}
-            @media (max-width: 1100px){.kpi-grid-3{grid-template-columns:repeat(2,1fr);}}
-            @media (max-width: 700px){.kpi-grid-3{grid-template-columns:1fr;}}
             </style>
             """,
             unsafe_allow_html=True,
         )
         st.markdown(
             f"""
-            <div class="kpi-grid-3">
+            <div class="kpi-row">
               <div class="kpi-card kpi-green">
                 <div class="kpi-title">TOTAL INGRESOS</div>
                 <div class="kpi-value">${total_ing:,.0f}</div>
@@ -320,9 +461,19 @@ def run_streamlit():
                 <div class="kpi-sub">Suma histórica</div>
               </div>
               <div class="kpi-card kpi-teal">
-                <div class="kpi-title">NETO ACUMULADO</div>
+                <div class="kpi-title">NETO ACUMULADO - BANCO</div>
                 <div class="kpi-value">${total_neto:,.0f}</div>
                 <div class="kpi-sub">Ingresos - Costos</div>
+              </div>
+              <div class="kpi-card kpi-red">
+                <div class="kpi-title">PENDIENTE DE PAGO TOTAL</div>
+                <div class="kpi-value">${pendiente_total:,.0f}</div>
+                <div class="kpi-sub">GC + mantención + proyecto</div>
+              </div>
+              <div class="kpi-card kpi-red">
+                <div class="kpi-title">% NO PAGO TOTAL</div>
+                <div class="kpi-value">{pct_no_pago:,.1f}%</div>
+                <div class="kpi-sub">Pendiente / GC total</div>
               </div>
               <div class="kpi-card kpi-navy">
                 <div class="kpi-title">MEJOR AÑO</div>
@@ -467,33 +618,61 @@ def run_streamlit():
             filt.groupby("parcela_norm")["monto_norm"].sum().sort_values(ascending=False).index[0]
             if not filt.empty else "-"
         )
+        # Ingresos GC vs Mantención vs Proyectos
+        if col_concepto:
+            texto_conc = filt[col_concepto].astype(str).str.lower()
+            ing_gc = float(filt[texto_conc.str.contains("gasto", regex=False) | texto_conc.str.contains("gc", regex=False)]["monto_norm"].sum())
+            ing_mant = float(
+                filt[
+                    texto_conc.str.contains("mantencion", regex=False)
+                    | texto_conc.str.contains("mantenimiento", regex=False)
+                ]["monto_norm"].sum()
+            )
+            ing_proy = float(filt[texto_conc.str.contains("proyecto", regex=False)]["monto_norm"].sum())
+        else:
+            ing_gc = 0.0
+            ing_mant = 0.0
+            ing_proy = 0.0
 
         st.markdown(
             """
             <style>
-            .kpi-grid-3 {display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin:8px 0 18px 0;}
-            .kpi-card {background:#fff;border:1px solid #E2E8F0;border-radius:16px;padding:18px 20px;box-shadow:0 2px 12px rgba(15,23,42,0.06);position:relative;}
+            .kpi-row {display:flex;gap:16px;overflow-x:auto;padding-bottom:6px;margin:8px 0 18px 0;}
+            .kpi-card {min-width:220px;flex:0 0 220px;background:#fff;border:1px solid #E2E8F0;border-radius:16px;padding:14px 16px;box-shadow:0 2px 12px rgba(15,23,42,0.06);position:relative;}
             .kpi-card:before {content:"";position:absolute;left:0;top:0;height:100%;width:6px;border-radius:16px 0 0 16px;}
-            .kpi-title {font-size:12px;letter-spacing:0.08em;color:#6B7280;font-weight:700;}
-            .kpi-value {font-size:24px;font-weight:800;margin-top:6px;}
-            .kpi-sub {font-size:12px;color:#94A3B8;margin-top:6px;}
+            .kpi-title {font-size:11px;letter-spacing:0.08em;color:#6B7280;font-weight:700;}
+            .kpi-value {font-size:22px;font-weight:800;margin-top:6px;}
+            .kpi-sub {font-size:11px;color:#94A3B8;margin-top:6px;}
             .kpi-green:before {background:#22C55E;}
             .kpi-navy:before {background:#0B1F2A;}
             .kpi-teal:before {background:#2C5B4A;}
             .kpi-red:before {background:#EF4444;}
-            @media (max-width: 1100px){.kpi-grid-3{grid-template-columns:repeat(2,1fr);}}
-            @media (max-width: 700px){.kpi-grid-3{grid-template-columns:1fr;}}
             </style>
             """,
             unsafe_allow_html=True,
         )
         st.markdown(
             f"""
-            <div class="kpi-grid-3">
+            <div class="kpi-row">
               <div class="kpi-card kpi-green">
                 <div class="kpi-title">TOTAL INGRESOS</div>
                 <div class="kpi-value">${total_ing:,.0f}</div>
                 <div class="kpi-sub">Suma filtrada</div>
+              </div>
+              <div class="kpi-card kpi-teal">
+                <div class="kpi-title">INGRESOS GC</div>
+                <div class="kpi-value">${ing_gc:,.0f}</div>
+                <div class="kpi-sub">Solo gasto común</div>
+              </div>
+              <div class="kpi-card kpi-teal">
+                <div class="kpi-title">INGRESOS MANTENCIÓN</div>
+                <div class="kpi-value">${ing_mant:,.0f}</div>
+                <div class="kpi-sub">Solo mantención</div>
+              </div>
+              <div class="kpi-card kpi-red">
+                <div class="kpi-title">INGRESOS PROYECTO</div>
+                <div class="kpi-value">${ing_proy:,.0f}</div>
+                <div class="kpi-sub">Solo proyectos</div>
               </div>
               <div class="kpi-card kpi-navy">
                 <div class="kpi-title">PROMEDIO MENSUAL</div>
@@ -765,20 +944,21 @@ def run_streamlit():
                 prov = (
                     filt.groupby(col_prov, as_index=False)["monto_norm"]
                     .sum()
-                    .sort_values("monto_norm", ascending=False)
+                    .assign(monto_abs=lambda d: d["monto_norm"].abs())
+                    .query("monto_abs > 0")
+                    .sort_values("monto_abs", ascending=False)
                     .head(12)
                 )
-                fig_v = px.bar(
+                fig_v = px.pie(
                     prov,
-                    x=col_prov,
-                    y="monto_norm",
+                    names=col_prov,
+                    values="monto_abs",
                     title="Costos por proveedor (top 12)",
-                    labels={col_prov: "Proveedor", "monto_norm": "Costo (CLP)"},
+                    hole=0.35,
                     color_discrete_sequence=muted_palette,
-                    text="monto_norm",
                 )
-                fig_v.update_traces(texttemplate="$%{text:,.0f}", textposition="inside", textfont_color="white")
-                fig_v.update_layout(hovermode="x unified", height=420)
+                fig_v.update_traces(textinfo="percent+label")
+                fig_v.update_layout(height=462, legend_title_text="Proveedor")
                 st.plotly_chart(fig_v, use_container_width=True)
 
         st.subheader("Detalle de costos (filtrado)")
@@ -790,6 +970,8 @@ def run_streamlit():
             df_obl = _load(OBLIGACIONES_CSV_URL, CACHE_VERSION, {"ano", "anio", "año", "parcela", "gc"})
             df_ing_o = _load(INGRESOS_CSV_URL, CACHE_VERSION, {"fecha", "parcela", "abono"})
             df_prop = _load(PROPIETARIOS_CSV_URL, CACHE_VERSION, {"parcela", "propietario"})
+            df_td = load_td23_table(TD23_CSV_URL)
+            df_mant = load_mantencion_table(MANTENCION_CSV_URL)
 
         cols_ing_o = list(df_ing_o.columns)
         cand_concepto = ["detalle", "concepto", "glosa", "descripcion", "tipo", "categoria", "cc", "ccc", "medio"]
@@ -837,19 +1019,102 @@ def run_streamlit():
             tabla_full["pendiente_pos"] = tabla_full["pendiente"].clip(lower=0)
             tabla_full["saldo_favor"] = (-tabla_full["pendiente"]).clip(lower=0)
 
+            # Mantención por parcela
+            if not df_mant.empty:
+                df_mant = df_mant.groupby("parcela", as_index=False)["mantencion"].sum()
+                tabla_full = tabla_full.merge(df_mant, on="parcela", how="left").fillna({"mantencion": 0})
+
+                # Resta pagos de mantención desde ingresos (cc = mantención/mantenimiento)
+                cols_ing = list(df_ing_o.columns)
+                col_cc_ing = _pick_col(cols_ing, ["cc", "categoria", "rubro", "ccc"])
+                col_abono_ing = _pick_col(cols_ing, ["abono"])
+                col_parc_ing = _pick_col(cols_ing, ["parcela"])
+                if col_cc_ing and col_abono_ing and col_parc_ing:
+                    ing_m = df_ing_o.copy()
+                    ing_m["parcela"] = pd.to_numeric(
+                        ing_m[col_parc_ing].astype(str).str.replace(r"[^\d]", "", regex=True),
+                        errors="coerce",
+                    )
+                    ing_m["monto_norm"] = _parse_monto_series(ing_m[col_abono_ing])
+                    ing_m = ing_m.dropna(subset=["parcela", "monto_norm"])
+                    cc_text = (
+                        ing_m[col_cc_ing]
+                        .astype(str)
+                        .str.lower()
+                        .str.replace("á", "a")
+                        .str.replace("é", "e")
+                        .str.replace("í", "i")
+                        .str.replace("ó", "o")
+                        .str.replace("ú", "u")
+                        .str.replace("ñ", "n")
+                    )
+                    mask_mant = cc_text.str.contains("mantencion", regex=False) | cc_text.str.contains("mantenimiento", regex=False)
+                    pagos_mant = (
+                        ing_m[mask_mant]
+                        .groupby("parcela", as_index=False)["monto_norm"]
+                        .sum()
+                        .rename(columns={"monto_norm": "pagado_mant"})
+                    )
+                    tabla_full = tabla_full.merge(pagos_mant, on="parcela", how="left").fillna({"pagado_mant": 0})
+                    tabla_full["mantencion"] = (tabla_full["mantencion"] - tabla_full["pagado_mant"]).clip(lower=0)
+                    tabla_full = tabla_full.drop(columns=["pagado_mant"])
+
+                tabla_full = tabla_full.rename(columns={"mantencion": "Mantención"})
+
+            # Cruce por CC desde TD 2.3
+            if not df_td.empty:
+                cols_ing = list(df_ing_o.columns)
+                col_cc_ing = _pick_col(cols_ing, ["cc", "categoria", "rubro", "ccc"])
+                if col_cc_ing:
+                    df_ing_cc = df_ing_o.copy()
+                    df_ing_cc["parcela"] = pd.to_numeric(
+                        df_ing_cc[_pick_col(cols_ing, ["parcela"])].astype(str).str.replace(r"[^\d]", "", regex=True),
+                        errors="coerce",
+                    )
+                    df_ing_cc["monto_norm"] = _parse_monto_series(df_ing_cc[_pick_col(cols_ing, ["abono"])])
+                    df_ing_cc = df_ing_cc.dropna(subset=["parcela", "monto_norm"])
+                    df_ing_cc["cc_norm"] = df_ing_cc[col_cc_ing].astype(str).str.lower()
+
+                    df_td = df_td.copy()
+                    df_td["cc_norm"] = df_td["cc"].astype(str).str.lower()
+                    df_td["monto_norm"] = _parse_monto_series(df_td["monto"])
+
+                    for _, row in df_td.iterrows():
+                        cc_name = str(row["cc"]).strip()
+                        if not cc_name:
+                            continue
+                        monto_cc = float(row["monto_norm"]) if pd.notna(row["monto_norm"]) else 0.0
+                        if monto_cc == 0:
+                            continue
+                        mask_cc = df_ing_cc["cc_norm"].str.contains(cc_name.lower(), regex=False)
+                        pagos_cc = (
+                            df_ing_cc[mask_cc]
+                            .groupby("parcela", as_index=False)["monto_norm"]
+                            .sum()
+                            .rename(columns={"monto_norm": "pagado_cc"})
+                        )
+                        col_name = f"Pendiente {cc_name}"
+                        tabla_full = tabla_full.merge(pagos_cc, on="parcela", how="left").fillna({"pagado_cc": 0})
+                        tabla_full[col_name] = (monto_cc - tabla_full["pagado_cc"]).clip(lower=0)
+                        tabla_full = tabla_full.drop(columns=["pagado_cc"])
+
             gc_total_parcela = float(tabla_full["gc_total"].max()) if not tabla_full.empty else 0.0
             total_pagado = float(tabla_full["pagado"].sum()) if not tabla_full.empty else 0.0
             total_pendiente = float(tabla_full["pendiente_pos"].sum()) if not tabla_full.empty else 0.0
             total_favor = float(tabla_full["saldo_favor"].sum()) if not tabla_full.empty else 0.0
+            pendiente_mant = float(tabla_full["Mantención"].sum()) if "Mantención" in tabla_full.columns else 0.0
+            # Suma pendientes por CC (ej. Proyecto)
+            cc_cols = [c for c in tabla_full.columns if c.startswith("Pendiente ")]
+            pendiente_proy = float(tabla_full[cc_cols].sum().sum()) if cc_cols else 0.0
 
             st.markdown(
                 """
                 <style>
-                .kpi-grid {display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin:8px 0 18px 0;}
+                .kpi-grid {display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin:8px 0 18px 0;}
                 .kpi-card {background:#fff;border:1px solid #E2E8F0;border-radius:16px;padding:18px 20px;box-shadow:0 2px 12px rgba(15,23,42,0.06);position:relative;}
                 .kpi-card:before {content:"";position:absolute;left:0;top:0;height:100%;width:6px;border-radius:16px 0 0 16px;}
-                .kpi-title {font-size:12px;letter-spacing:0.08em;color:#6B7280;font-weight:700;}
-                .kpi-value {font-size:28px;font-weight:800;margin-top:6px;}
+                .kpi-title {font-size:11px;letter-spacing:0.08em;color:#6B7280;font-weight:700;}
+                .kpi-value {font-size:22px;font-weight:800;margin-top:6px;}
                 .kpi-sub {font-size:12px;color:#94A3B8;margin-top:6px;}
                 .kpi-green:before {background:#22C55E;}
                 .kpi-red:before {background:#EF4444;}
@@ -876,9 +1141,19 @@ def run_streamlit():
                     <div class="kpi-sub">Ingresos reconocidos como GC</div>
                   </div>
                   <div class="kpi-card kpi-red">
-                    <div class="kpi-title">PENDIENTE TOTAL</div>
+                    <div class="kpi-title">PENDIENTE GC</div>
                     <div class="kpi-value">${total_pendiente:,.0f}</div>
                     <div class="kpi-sub">Solo montos positivos</div>
+                  </div>
+                  <div class="kpi-card kpi-red">
+                    <div class="kpi-title">PENDIENTE MANTENCIÓN</div>
+                    <div class="kpi-value">${pendiente_mant:,.0f}</div>
+                    <div class="kpi-sub">Mantención por parcela</div>
+                  </div>
+                  <div class="kpi-card kpi-red">
+                    <div class="kpi-title">PENDIENTE PROYECTO</div>
+                    <div class="kpi-value">${pendiente_proy:,.0f}</div>
+                    <div class="kpi-sub">Suma CC proyectos</div>
                   </div>
                   <div class="kpi-card kpi-teal">
                     <div class="kpi-title">GC POR ANTICIPADO</div>
@@ -890,7 +1165,7 @@ def run_streamlit():
                 unsafe_allow_html=True,
             )
 
-            st.subheader("Obligación acumulada vs Pagos (por parcela)")
+            st.subheader("Obligación acumulada vs Pagos")
             tabla_show = tabla_full.copy()
             tabla_show = tabla_show.rename(
                 columns={
@@ -899,32 +1174,141 @@ def run_streamlit():
                     "gc_total": "GC total",
                     "pendiente": "Diferencia",
                     "pendiente_pos": "Pendiente",
-                    "saldo_favor": "Saldo a favor",
+                    "saldo_favor": "GC por anticipado",
+                    "Mantención": "Pendiente mantención",
                 }
             )
+            # Agrega Propietario junto a Parcela
+            cols_prop = list(df_prop.columns)
+            col_parc_p = _pick_col(cols_prop, ["n_parcela", "numero_parcela", "parcela", "lote", "unidad", "sitio"])
+            col_name = _pick_col(cols_prop, ["nombre", "propietario", "dueno", "dueño"])
+            if col_parc_p and col_name:
+                prop_map = df_prop.copy()
+                prop_map["Parcela"] = pd.to_numeric(
+                    prop_map[col_parc_p].astype(str).str.replace(r"[^\d]", "", regex=True),
+                    errors="coerce",
+                )
+                prop_map = prop_map.dropna(subset=["Parcela"])
+                prop_map = prop_map[["Parcela", col_name]].rename(columns={col_name: "Propietario"})
+                tabla_show = tabla_show.merge(prop_map, on="Parcela", how="left")
+            else:
+                tabla_show["Propietario"] = ""
+            if "pendiente" in tabla_show.columns:
+                tabla_show = tabla_show.drop(columns=["pendiente"])
+            if "Diferencia" in tabla_show.columns:
+                tabla_show = tabla_show.drop(columns=["Diferencia"])
+            # Formato para columnas adicionales de CC
+            extra_cc_cols = [c for c in tabla_show.columns if c.startswith("Pendiente ")]
+            # Total por pagar = Pendiente + Pendiente mantención + CCs
+            total_cols = ["Pendiente", "Pendiente mantención"] + extra_cc_cols
+            tabla_show["Total por pagar"] = tabla_show[total_cols].fillna(0).sum(axis=1)
+            # Renombre pendiente
+            tabla_show = tabla_show.rename(columns={"Pendiente": "Pendiente GC"})
+            # Orden columnas: Parcela, Propietario, ...
+            cols_front = ["Parcela", "Propietario"]
+            cols_rest = [c for c in tabla_show.columns if c not in cols_front]
+            tabla_show = tabla_show[cols_front + cols_rest]
 
             def _style_obl(s: pd.Series):
-                if s.name in ("Pendiente", "Diferencia"):
-                    return ["background-color: #4A1B1B; color: #F8FAFC;" if v > 0 else "" for v in s]
-                if s.name == "Saldo a favor":
-                    return ["background-color: #0F3D2E; color: #F8FAFC;" if v > 0 else "" for v in s]
+                if s.name == "Total por pagar":
+                    return ["background-color: #5A2A2A; color: #FFFFFF; font-weight:700;" if v > 0 else "" for v in s]
+                return [""] * len(s)
+
+            def _style_row_total(row: pd.Series):
+                if row.get("Total por pagar", 0) > 0:
+                    return ["background-color: #F4DCDC;" for _ in row]
+                return ["" for _ in row]
+
+            def _style_total_col(s: pd.Series):
+                if s.name == "Total por pagar":
+                    return ["background-color: #5A2A2A; color: #FFFFFF; font-weight:700;" if v > 0 else "" for v in s]
                 return [""] * len(s)
 
             styler = (
                 tabla_show.style
-                .format({col: "${:,.0f}" for col in ["Pagado", "GC total", "Diferencia", "Pendiente", "Saldo a favor"]})
+                .format({col: "${:,.0f}" for col in ["Pagado", "GC total", "Pendiente GC", "GC por anticipado", "Pendiente mantención", "Total por pagar"] + extra_cc_cols})
                 .apply(_style_obl)
+                .apply(_style_row_total, axis=1)
+                .apply(_style_total_col, axis=0)
+                .set_properties(subset=["Parcela"], **{"text-align": "center"})
+                .set_properties(subset=["Propietario"], **{"text-align": "left"})
+                .set_properties(subset=[c for c in tabla_show.columns if c not in ("Parcela", "Propietario")], **{"text-align": "right"})
                 .set_table_styles(
                     [
-                        {"selector": "th", "props": "background:#0B1F2A;color:#F8FAFC;font-weight:600;"},
-                        {"selector": "td", "props": "border-color:#E2E8F0;"},
-                        {"selector": "tr:nth-child(even) td", "props": "background:#F4F7FA;"},
+                        {"selector": "th", "props": "background:#0B1F2A;color:#F8FAFC;font-weight:700;font-size:12px;padding:6px 8px;"},
+                        {"selector": "td", "props": "border-color:#E2E8F0;font-size:12px;padding:6px 8px;"},
+                        {"selector": "tr:nth-child(even) td", "props": "background:#EAF0F5;"},
+                        {"selector": "tr:hover td", "props": "background:#DCE7F0;"},
+                        {"selector": "table", "props": "border-radius:10px;overflow:hidden;"},
                     ]
                 )
             )
-            st.dataframe(styler, use_container_width=True, height=520, hide_index=True)
+            st.dataframe(styler, use_container_width=True, height=800, hide_index=True)
 
-            st.subheader("Tabla para propietarios (solo pendientes positivos)")
+            pie_gc = tabla_show[tabla_show["Pendiente GC"] > 0][["Parcela", "Pendiente GC"]].copy()
+            pie_mant = tabla_show[tabla_show["Pendiente mantención"] > 0][["Parcela", "Pendiente mantención"]].copy()
+            # Para proyecto, suma de columnas "Pendiente X"
+            proj_cols = [c for c in tabla_show.columns if c.startswith("Pendiente ") and c not in ("Pendiente mantención", "Pendiente GC")]
+            if proj_cols:
+                pie_proj = tabla_show[["Parcela"] + proj_cols].copy()
+                pie_proj["Pendiente proyecto"] = pie_proj[proj_cols].sum(axis=1)
+                pie_proj = pie_proj[pie_proj["Pendiente proyecto"] > 0][["Parcela", "Pendiente proyecto"]]
+            else:
+                pie_proj = pd.DataFrame(columns=["Parcela", "Pendiente proyecto"])
+
+            try:
+                import plotly.express as px
+            except Exception:
+                st.error("Falta Plotly para el gráfico avanzado. Instala con: pip install plotly")
+            else:
+                c1, c2, c3 = st.columns(3)
+                with c1:
+                    if not pie_gc.empty:
+                        fig_gc = px.pie(
+                            pie_gc,
+                            names="Parcela",
+                            values="Pendiente GC",
+                            title="Distribución pendiente GC por parcela",
+                            hole=0.35,
+                            color_discrete_sequence=["#0B1F2A", "#1F4F5B", "#2C5B4A", "#3A6B5A", "#8DA2C8", "#A4463F"],
+                        )
+                        fig_gc.update_traces(textinfo="percent+label")
+                        fig_gc.update_layout(height=380, margin=dict(l=5, r=5, t=40, b=10), legend_title_text="Parcela")
+                        st.plotly_chart(fig_gc, use_container_width=True)
+                    else:
+                        st.info("Sin pendiente GC.")
+                with c2:
+                    if not pie_mant.empty:
+                        fig_m = px.pie(
+                            pie_mant,
+                            names="Parcela",
+                            values="Pendiente mantención",
+                            title="Distribución pendiente mantención",
+                            hole=0.35,
+                            color_discrete_sequence=["#2C5B4A", "#3A6B5A", "#8DA2C8", "#0B1F2A", "#1F4F5B", "#A4463F"],
+                        )
+                        fig_m.update_traces(textinfo="percent+label")
+                        fig_m.update_layout(height=380, margin=dict(l=5, r=5, t=40, b=10), legend_title_text="Parcela")
+                        st.plotly_chart(fig_m, use_container_width=True)
+                    else:
+                        st.info("Sin pendiente mantención.")
+                with c3:
+                    if not pie_proj.empty:
+                        fig_p = px.pie(
+                            pie_proj,
+                            names="Parcela",
+                            values="Pendiente proyecto",
+                            title="Distribución pendiente proyecto",
+                            hole=0.35,
+                            color_discrete_sequence=["#A4463F", "#8DA2C8", "#3A6B5A", "#2C5B4A", "#1F4F5B", "#0B1F2A"],
+                        )
+                        fig_p.update_traces(textinfo="percent+label")
+                        fig_p.update_layout(height=380, margin=dict(l=5, r=5, t=40, b=10), legend_title_text="Parcela")
+                        st.plotly_chart(fig_p, use_container_width=True)
+                    else:
+                        st.info("Sin pendiente proyecto.")
+
+            st.subheader("Detalle de GC pendientes por parcela")
             tabla_prop = tabla_full[["parcela", "pendiente_pos", "gc_total"]].copy()
             cols_prop = list(df_prop.columns)
             col_parc_p = _pick_col(cols_prop, ["n_parcela", "numero_parcela", "parcela", "lote", "unidad", "sitio"])
@@ -972,24 +1356,51 @@ def run_streamlit():
             )
             tabla_prop = tabla_prop[["Parcela", "Propietario", "Pendiente", "% Pendiente", "Fecha"]]
             tabla_prop = tabla_prop.rename(columns={"Fecha": "Último pago"})
-            styler_prop = (
-                tabla_prop.style
-                .format({"Pendiente": "${:,.0f}", "% Pendiente": "{:.1f}%", "Último pago": "{:%d-%m-%Y}"})
-                .apply(
-                    lambda s: ["background-color: #4A1B1B; color:#F8FAFC;" if v > 0 else "" for v in s]
-                    if s.name in ("Pendiente", "% Pendiente")
-                    else [""] * len(s)
+
+            left_col, right_col = st.columns([1.2, 1])
+            with left_col:
+                styler_prop = (
+                    tabla_prop.style
+                    .format({"Pendiente": "${:,.0f}", "% Pendiente": "{:.1f}%", "Último pago": "{:%d-%m-%Y}"})
+                    .apply(
+                        lambda s: ["background-color: #4A1B1B; color:#F8FAFC;" if v > 0 else "" for v in s]
+                        if s.name in ("Pendiente", "% Pendiente")
+                        else [""] * len(s)
+                    )
+                    .set_table_styles(
+                        [
+                            {"selector": "th", "props": "background:#0B1F2A;color:#F8FAFC;font-weight:600;"},
+                            {"selector": "th", "props": "padding:5px 8px;"},
+                            {"selector": "td", "props": "padding:5px 8px;"},
+                            {"selector": "tr:nth-child(even) td", "props": "background:#F4F7FA;"},
+                        ]
+                    )
                 )
-                .set_table_styles(
-                    [
-                        {"selector": "th", "props": "background:#0B1F2A;color:#F8FAFC;font-weight:600;"},
-                        {"selector": "th", "props": "padding:5px 8px;"},
-                        {"selector": "td", "props": "padding:5px 8px;"},
-                        {"selector": "tr:nth-child(even) td", "props": "background:#F4F7FA;"},
-                    ]
-                )
-            )
-            st.dataframe(styler_prop, use_container_width=True, height=800, hide_index=True)
+                st.dataframe(styler_prop, use_container_width=True, height=800, hide_index=True)
+
+            with right_col:
+                pie_df = tabla_prop[tabla_prop["% Pendiente"] > 0].copy()
+                if not pie_df.empty:
+                    try:
+                        import plotly.express as px
+                    except Exception:
+                        st.error("Falta Plotly para el gráfico avanzado. Instala con: pip install plotly")
+                    else:
+                        pie_df["Etiqueta"] = pie_df["Parcela"].astype(int).astype(str)
+                        fig_pie = px.pie(
+                            pie_df,
+                            names="Etiqueta",
+                            values="% Pendiente",
+                            title="Distribución % deuda por parcela",
+                            hole=0.35,
+                            color_discrete_sequence=["#0B1F2A", "#1F4F5B", "#2C5B4A", "#3A6B5A", "#8DA2C8", "#A4463F"],
+                        )
+                        fig_pie.update_layout(legend_title_text="Parcela")
+                        fig_pie.update_traces(textinfo="percent+label")
+                        fig_pie.update_layout(height=420, margin=dict(l=10, r=10, t=40, b=10))
+                        st.plotly_chart(fig_pie, use_container_width=True)
+                else:
+                    st.info("No hay pendientes positivos para graficar.")
 
             st.subheader("Detalle de abonos por parcela")
             cols_ing_det = list(df_ing_o.columns)
