@@ -1,9 +1,10 @@
 """
-Condominio - Dashboard (General + Ingresos V2.3 + Costos + Obligaciones)
+Condominio Los Queltehues III - Dashboard (General + Ingresos V2.3 + Costos + Obligaciones)
 """
 
 from __future__ import annotations
 
+import base64
 import io
 import re
 from typing import Optional
@@ -144,6 +145,223 @@ def _df_to_pdf_bytes(df: pd.DataFrame, title: str) -> bytes:
     doc.build(story)
     buffer.seek(0)
     return buffer.read()
+
+
+def _fig_to_base64_png(fig, width: int = 1100, height: int = 650) -> str:
+    try:
+        import plotly.io as pio
+    except Exception as e:
+        raise RuntimeError("Falta Plotly. Instala con: pip install plotly") from e
+
+    try:
+        img_bytes = pio.to_image(fig, format="png", width=width, height=height, scale=2)
+    except Exception as e:
+        msg = str(e)
+        if "kaleido" in msg.lower():
+            raise RuntimeError("Falta Kaleido. Instala con: pip install kaleido") from e
+        raise
+    return base64.b64encode(img_bytes).decode("ascii")
+
+
+def _build_obligaciones_report_pdf_bytes(
+    kpi_data: dict,
+    fig_acum,
+    tabla_show: pd.DataFrame,
+    fig_gc,
+    fig_m,
+    fig_p,
+    fig_cost_cat,
+    fig_cost_prov,
+) -> bytes:
+    try:
+        from reportlab.lib.pagesizes import A4, landscape
+        from reportlab.lib import colors
+        from reportlab.lib.styles import getSampleStyleSheet
+        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image, PageBreak
+    except Exception as e:
+        raise RuntimeError("Falta reportlab. Instala con: pip install reportlab") from e
+
+    def _fmt_money(v):
+        try:
+            return f"${float(v):,.0f}"
+        except Exception:
+            return v
+    def _to_num(v):
+        try:
+            return float(v)
+        except Exception:
+            s = re.sub(r"[^\d\.\-]", "", str(v))
+            try:
+                return float(s) if s else 0.0
+            except Exception:
+                return 0.0
+
+    table_main = tabla_show.copy()
+    table_raw = tabla_show.copy()
+    for col in table_main.columns:
+        if col not in ("Parcela", "Propietario"):
+            table_main[col] = table_main[col].apply(_fmt_money)
+
+    styles = getSampleStyleSheet()
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=landscape(A4), leftMargin=24, rightMargin=24, topMargin=24, bottomMargin=24)
+    story = [Paragraph("Reporte de Obligaciones", styles["Heading2"]), Spacer(1, 10)]
+
+    story.append(Paragraph("Ingresos, Costos y Neto (mensual)", styles["Heading3"]))
+    kpi_rows = [
+        ["Total ingresos", _fmt_money(kpi_data.get("total_ing", 0))],
+        ["Total costos", _fmt_money(kpi_data.get("total_cost", 0))],
+        ["Neto acumulado - banco", _fmt_money(kpi_data.get("total_neto", 0))],
+        ["Pendiente de pago total", _fmt_money(kpi_data.get("pendiente_total", 0))],
+        ["% no pago total", f'{kpi_data.get("pct_no_pago", 0):.1f}%'],
+        ["Mejor año", str(kpi_data.get("best_year", ""))],
+    ]
+    t_kpi = Table(kpi_rows, colWidths=[220, 160])
+    t_kpi.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#F8FAFC")),
+                ("BOX", (0, 0), (-1, -1), 0.25, colors.HexColor("#E2E8F0")),
+                ("INNERGRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#E2E8F0")),
+                ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
+                ("FONTSIZE", (0, 0), (-1, -1), 9),
+                ("TEXTCOLOR", (0, 0), (-1, -1), colors.HexColor("#0B1F2A")),
+                ("ALIGN", (1, 0), (1, -1), "RIGHT"),
+            ]
+        )
+    )
+    story.append(t_kpi)
+    story.append(Spacer(1, 8))
+
+    if fig_acum is not None:
+        img_acum = _fig_to_base64_png(fig_acum, width=1000, height=520)
+        story.append(Image(io.BytesIO(base64.b64decode(img_acum)), width=600, height=300))
+        story.append(Spacer(1, 10))
+
+    story.append(PageBreak())
+    story.append(Paragraph("Obligación acumulada vs Pagos", styles["Heading3"]))
+    data_main = [list(table_main.columns)] + table_main.values.tolist()
+    t_main = Table(data_main, repeatRows=1)
+    table_style = [
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0B1F2A")),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, 0), 8),
+        ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#E2E8F0")),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.whitesmoke, colors.HexColor("#F4F7FA")]),
+    ]
+    pending_cols = [c for c in table_raw.columns if c.startswith("Pendiente")]
+    col_idx = {c: i for i, c in enumerate(table_raw.columns)}
+    total_col_idx = col_idx.get("Total por pagar")
+    for r in range(len(table_raw)):
+        total_val = _to_num(table_raw.iloc[r]["Total por pagar"]) if "Total por pagar" in table_raw.columns else 0.0
+        if total_val > 0:
+            table_style.append(("BACKGROUND", (0, r + 1), (-1, r + 1), colors.HexColor("#F4DCDC")))
+        if total_col_idx is not None and total_val > 0:
+            table_style.append(("BACKGROUND", (total_col_idx, r + 1), (total_col_idx, r + 1), colors.HexColor("#5A2A2A")))
+            table_style.append(("TEXTCOLOR", (total_col_idx, r + 1), (total_col_idx, r + 1), colors.white))
+            table_style.append(("FONTNAME", (total_col_idx, r + 1), (total_col_idx, r + 1), "Helvetica-Bold"))
+    t_main.setStyle(TableStyle(table_style))
+    story.append(t_main)
+    story.append(Spacer(1, 10))
+
+    story.append(PageBreak())
+    story.append(Paragraph("Distribución de pendientes", styles["Heading3"]))
+    pie_imgs = []
+    for fig in (fig_gc, fig_m, fig_p):
+        if fig is not None:
+            img_b64 = _fig_to_base64_png(fig, width=600, height=380)
+            pie_imgs.append(Image(io.BytesIO(base64.b64decode(img_b64)), width=240, height=160))
+        else:
+            pie_imgs.append(Spacer(1, 160))
+    story.append(Table([pie_imgs], colWidths=[260, 260, 260]))
+    story.append(Spacer(1, 8))
+
+    if fig_cost_cat is not None:
+        img_cat = _fig_to_base64_png(fig_cost_cat, width=1000, height=520)
+        story.append(Paragraph("Costo por categoría", styles["Heading3"]))
+        story.append(Image(io.BytesIO(base64.b64decode(img_cat)), width=600, height=300))
+        story.append(Spacer(1, 8))
+
+    if fig_cost_prov is not None:
+        img_prov = _fig_to_base64_png(fig_cost_prov, width=900, height=520)
+        story.append(Paragraph("Costos por proveedor (top 12)", styles["Heading3"]))
+        story.append(Image(io.BytesIO(base64.b64decode(img_prov)), width=520, height=300))
+
+    doc.build(story)
+    buffer.seek(0)
+    return buffer.read()
+    def _fmt_money(v):
+        try:
+            return f"${float(v):,.0f}"
+        except Exception:
+            return v
+
+    table_obl = oblig_show.copy()
+    if "GC total por año" in table_obl.columns:
+        table_obl["GC total por año"] = table_obl["GC total por año"].apply(_fmt_money)
+
+    table_main = tabla_show.copy()
+    for col in table_main.columns:
+        if col not in ("Parcela", "Propietario"):
+            table_main[col] = table_main[col].apply(_fmt_money)
+
+    def _table_html(df):
+        return df.to_html(index=False, classes="tbl", escape=False)
+
+    img_obl = _fig_to_base64_png(fig_obl_pie) if fig_obl_pie is not None else ""
+    img_gc = _fig_to_base64_png(fig_gc) if fig_gc is not None else ""
+    img_m = _fig_to_base64_png(fig_m) if fig_m is not None else ""
+    img_p = _fig_to_base64_png(fig_p) if fig_p is not None else ""
+
+    html = f"""
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Reporte Obligaciones</title>
+<style>
+  body {{font-family: Arial, sans-serif; color:#0f172a; margin:24px;}}
+  h1 {{margin:0 0 12px 0; font-size:22px;}}
+  h2 {{margin:20px 0 10px 0; font-size:16px; color:#0B1F2A;}}
+  .row {{display:flex; gap:16px; align-items:flex-start;}}
+  .col {{flex:1;}}
+  .card {{border:1px solid #E2E8F0; border-radius:12px; padding:12px; background:#fff;}}
+  .tbl {{width:100%; border-collapse:collapse; font-size:12px;}}
+  .tbl th {{background:#0B1F2A; color:#F8FAFC; font-weight:700; padding:6px 8px;}}
+  .tbl td {{border:1px solid #E2E8F0; padding:6px 8px; text-align:right;}}
+  .tbl td:first-child, .tbl th:first-child {{text-align:center;}}
+  .tbl td:nth-child(2), .tbl th:nth-child(2) {{text-align:left;}}
+  .note {{font-size:11px; color:#64748B;}}
+  img {{max-width:100%; height:auto;}}
+  .pie-row {{display:flex; gap:12px;}}
+  .pie-row .card {{flex:1;}}
+</style>
+</head>
+<body>
+  <h1>Reporte de Obligaciones</h1>
+
+  <h2>Obligación por año (GC)</h2>
+  <div class="row">
+    <div class="col card">{_table_html(table_obl)}</div>
+    <div class="col card">{f'<img src="data:image/png;base64,{img_obl}" alt="Distribución GC por año"/>' if img_obl else ''}</div>
+  </div>
+
+  <h2>Obligación acumulada vs Pagos</h2>
+  <div class="card">{_table_html(table_main)}</div>
+
+  <h2>Distribución de pendientes</h2>
+  <div class="pie-row">
+    <div class="card">{f'<img src="data:image/png;base64,{img_gc}" alt="Pendiente GC"/>' if img_gc else ''}</div>
+    <div class="card">{f'<img src="data:image/png;base64,{img_m}" alt="Pendiente mantención"/>' if img_m else ''}</div>
+    <div class="card">{f'<img src="data:image/png;base64,{img_p}" alt="Pendiente proyecto"/>' if img_p else ''}</div>
+  </div>
+
+  <p class="note">Fuente: Google Sheets (CSV publicado). Generado por dashboard Condominio.</p>
+</body>
+</html>
+"""
+    return html
 
 
 def build_series_mensual_ingresos(df: pd.DataFrame) -> pd.DataFrame:
@@ -289,13 +507,388 @@ def load_mantencion_table(url: str) -> pd.DataFrame:
 def run_streamlit():
     import streamlit as st
 
-    st.set_page_config(page_title="Condominio - Dashboard", layout="wide")
-    st.title("Condominio - Dashboard")
-    st.caption("Fuente: Google Sheets (CSV publicado)")
+    st.set_page_config(page_title="Condominio Los Quelrehues III - Dashboard", layout="wide")
 
     @st.cache_data(show_spinner=False)
     def _load(url_value: str, cache_version: int, expected_cols: Optional[set[str]] = None) -> pd.DataFrame:
         return load_data(url_value, expected_cols)
+
+    @st.cache_data(show_spinner=False)
+    def _make_obligaciones_report() -> bytes:
+        df_obl = _load(OBLIGACIONES_CSV_URL, CACHE_VERSION, {"ano", "anio", "año", "parcela", "gc"})
+        df_ing_o = _load(INGRESOS_CSV_URL, CACHE_VERSION, {"fecha", "parcela", "abono"})
+        df_prop = _load(PROPIETARIOS_CSV_URL, CACHE_VERSION, {"parcela", "propietario"})
+        df_td = load_td23_table(TD23_CSV_URL)
+        df_mant = load_mantencion_table(MANTENCION_CSV_URL)
+
+        cols_ing_o = list(df_ing_o.columns)
+        cand_concepto = ["detalle", "concepto", "glosa", "descripcion", "tipo", "categoria", "cc", "ccc", "medio"]
+        concepto_col_val = next((c for c in cand_concepto if c in cols_ing_o), None)
+        include_list = ["gasto", "gc"]
+        exclude_list = ["proyecto"]
+
+        oblig_anual, tabla = build_obligaciones_vs_pagos(
+            df_obl,
+            df_ing_o,
+            concepto_col=concepto_col_val,
+            include_keywords=include_list,
+            exclude_keywords=exclude_list,
+        )
+        if tabla.empty:
+            raise RuntimeError("No se pudieron construir obligaciones vs pagos. Revisa columnas de año/parcela/gc.")
+
+        tabla_full = tabla.copy()
+        tabla_full["pendiente_pos"] = tabla_full["pendiente"].clip(lower=0)
+        tabla_full["saldo_favor"] = (-tabla_full["pendiente"]).clip(lower=0)
+
+        if not df_mant.empty:
+            df_mant = df_mant.groupby("parcela", as_index=False)["mantencion"].sum()
+            tabla_full = tabla_full.merge(df_mant, on="parcela", how="left").fillna({"mantencion": 0})
+
+            cols_ing = list(df_ing_o.columns)
+            col_cc_ing = _pick_col(cols_ing, ["cc", "categoria", "rubro", "ccc"])
+            col_abono_ing = _pick_col(cols_ing, ["abono"])
+            col_parc_ing = _pick_col(cols_ing, ["parcela"])
+            if col_cc_ing and col_abono_ing and col_parc_ing:
+                ing_m = df_ing_o.copy()
+                ing_m["parcela"] = pd.to_numeric(
+                    ing_m[col_parc_ing].astype(str).str.replace(r"[^\d]", "", regex=True),
+                    errors="coerce",
+                )
+                ing_m["monto_norm"] = _parse_monto_series(ing_m[col_abono_ing])
+                ing_m = ing_m.dropna(subset=["parcela", "monto_norm"])
+                cc_text = (
+                    ing_m[col_cc_ing]
+                    .astype(str)
+                    .str.lower()
+                    .str.replace("á", "a")
+                    .str.replace("é", "e")
+                    .str.replace("í", "i")
+                    .str.replace("ó", "o")
+                    .str.replace("ú", "u")
+                    .str.replace("ñ", "n")
+                )
+                mask_mant = cc_text.str.contains("mantencion", regex=False) | cc_text.str.contains("mantenimiento", regex=False)
+                pagos_mant = (
+                    ing_m[mask_mant]
+                    .groupby("parcela", as_index=False)["monto_norm"]
+                    .sum()
+                    .rename(columns={"monto_norm": "pagado_mant"})
+                )
+                tabla_full = tabla_full.merge(pagos_mant, on="parcela", how="left").fillna({"pagado_mant": 0})
+                tabla_full["mantencion"] = (tabla_full["mantencion"] - tabla_full["pagado_mant"]).clip(lower=0)
+                tabla_full = tabla_full.drop(columns=["pagado_mant"])
+
+            tabla_full = tabla_full.rename(columns={"mantencion": "Mantención"})
+
+        if not df_td.empty:
+            cols_ing = list(df_ing_o.columns)
+            col_cc_ing = _pick_col(cols_ing, ["cc", "categoria", "rubro", "ccc"])
+            if col_cc_ing:
+                df_ing_cc = df_ing_o.copy()
+                df_ing_cc["parcela"] = pd.to_numeric(
+                    df_ing_cc[_pick_col(cols_ing, ["parcela"])].astype(str).str.replace(r"[^\d]", "", regex=True),
+                    errors="coerce",
+                )
+                df_ing_cc["monto_norm"] = _parse_monto_series(df_ing_cc[_pick_col(cols_ing, ["abono"])])
+                df_ing_cc = df_ing_cc.dropna(subset=["parcela", "monto_norm"])
+                df_ing_cc["cc_norm"] = df_ing_cc[col_cc_ing].astype(str).str.lower()
+
+                df_td = df_td.copy()
+                df_td["cc_norm"] = df_td["cc"].astype(str).str.lower()
+                df_td["monto_norm"] = _parse_monto_series(df_td["monto"])
+
+                for _, row in df_td.iterrows():
+                    cc_name = str(row["cc"]).strip()
+                    if not cc_name:
+                        continue
+                    monto_cc = float(row["monto_norm"]) if pd.notna(row["monto_norm"]) else 0.0
+                    if monto_cc == 0:
+                        continue
+                    mask_cc = df_ing_cc["cc_norm"].str.contains(cc_name.lower(), regex=False)
+                    pagos_cc = (
+                        df_ing_cc[mask_cc]
+                        .groupby("parcela", as_index=False)["monto_norm"]
+                        .sum()
+                        .rename(columns={"monto_norm": "pagado_cc"})
+                    )
+                    col_name = f"Pendiente {cc_name}"
+                    tabla_full = tabla_full.merge(pagos_cc, on="parcela", how="left").fillna({"pagado_cc": 0})
+                    tabla_full[col_name] = (monto_cc - tabla_full["pagado_cc"]).clip(lower=0)
+                    tabla_full = tabla_full.drop(columns=["pagado_cc"])
+
+        gc_total_parcela = float(tabla_full["gc_total"].max()) if not tabla_full.empty else 0.0
+        total_pendiente = float(tabla_full["pendiente_pos"].sum()) if not tabla_full.empty else 0.0
+        pendiente_mant = float(tabla_full["Mantención"].sum()) if "Mantención" in tabla_full.columns else 0.0
+        cc_cols = [c for c in tabla_full.columns if c.startswith("Pendiente ")]
+        pendiente_proy = float(tabla_full[cc_cols].sum().sum()) if cc_cols else 0.0
+
+        tabla_show = tabla_full.copy()
+        tabla_show = tabla_show.rename(
+            columns={
+                "parcela": "Parcela",
+                "pagado": "Pagado",
+                "gc_total": "GC total",
+                "pendiente": "Diferencia",
+                "pendiente_pos": "Pendiente",
+                "saldo_favor": "GC por anticipado",
+                "Mantención": "Pendiente mantención",
+            }
+        )
+        cols_prop = list(df_prop.columns)
+        col_parc_p = _pick_col(cols_prop, ["n_parcela", "numero_parcela", "parcela", "lote", "unidad", "sitio"])
+        col_name = _pick_col(cols_prop, ["nombre", "propietario", "dueno", "dueño"])
+        if col_parc_p and col_name:
+            prop_map = df_prop.copy()
+            prop_map["Parcela"] = pd.to_numeric(
+                prop_map[col_parc_p].astype(str).str.replace(r"[^\d]", "", regex=True),
+                errors="coerce",
+            )
+            prop_map = prop_map.dropna(subset=["Parcela"])
+            prop_map = prop_map[["Parcela", col_name]].rename(columns={col_name: "Propietario"})
+            tabla_show = tabla_show.merge(prop_map, on="Parcela", how="left")
+        else:
+            tabla_show["Propietario"] = ""
+        if "pendiente" in tabla_show.columns:
+            tabla_show = tabla_show.drop(columns=["pendiente"])
+        if "Diferencia" in tabla_show.columns:
+            tabla_show = tabla_show.drop(columns=["Diferencia"])
+        extra_cc_cols = [c for c in tabla_show.columns if c.startswith("Pendiente ")]
+        total_cols = ["Pendiente", "Pendiente mantención"] + extra_cc_cols
+        tabla_show["Total por pagar"] = tabla_show[total_cols].fillna(0).sum(axis=1)
+        tabla_show = tabla_show.rename(columns={"Pendiente": "Pendiente GC"})
+        cols_front = ["Parcela", "Propietario"]
+        cols_rest = [c for c in tabla_show.columns if c not in cols_front]
+        tabla_show = tabla_show[cols_front + cols_rest]
+
+        pie_gc = tabla_show[tabla_show["Pendiente GC"] > 0][["Parcela", "Pendiente GC"]].copy()
+        if "Pendiente mantención" in tabla_show.columns:
+            pie_mant = tabla_show[tabla_show["Pendiente mantención"] > 0][["Parcela", "Pendiente mantención"]].copy()
+        else:
+            pie_mant = pd.DataFrame(columns=["Parcela", "Pendiente mantención"])
+        proj_cols = [c for c in tabla_show.columns if c.startswith("Pendiente ") and c not in ("Pendiente mantención", "Pendiente GC")]
+        if proj_cols:
+            pie_proj = tabla_show[["Parcela"] + proj_cols].copy()
+            pie_proj["Pendiente proyecto"] = pie_proj[proj_cols].sum(axis=1)
+            pie_proj = pie_proj[pie_proj["Pendiente proyecto"] > 0][["Parcela", "Pendiente proyecto"]]
+        else:
+            pie_proj = pd.DataFrame(columns=["Parcela", "Pendiente proyecto"])
+
+        fig_gc = None
+        fig_m = None
+        fig_p = None
+        fig_acum = None
+        fig_cost_cat = None
+        fig_cost_prov = None
+
+        df_cost_r = _load(COSTOS_CSV_URL, CACHE_VERSION, {"monto", "proveedor", "cc"})
+        s_ing = build_series_mensual_ingresos(df_ing_o)
+        s_cost = build_series_mensual_costos(df_cost_r)
+        df_m = (
+            s_ing.merge(s_cost, on="periodo", how="outer")
+            .fillna(0)
+            .sort_values("periodo")
+        )
+        df_m["neto"] = df_m["ingresos"] - df_m["costos"].abs()
+        df_m["anio"] = pd.to_datetime(df_m["periodo"] + "-01", errors="coerce").dt.year
+        df_y = (
+            df_m.groupby("anio", as_index=False)[["ingresos", "costos", "neto"]]
+            .sum()
+            .fillna(0)
+        )
+        df_y["costos"] = df_y["costos"].abs()
+
+        total_ing = float(df_y["ingresos"].sum()) if not df_y.empty else 0.0
+        total_cost = float(df_y["costos"].sum()) if not df_y.empty else 0.0
+        total_neto = float(df_y["neto"].sum()) if not df_y.empty else 0.0
+        best_year = int(df_y.sort_values("neto", ascending=False)["anio"].iloc[0]) if not df_y.empty else 0
+        total_gc = float(gc_total_parcela * 20) if gc_total_parcela else 0.0
+        pendiente_total_all = float(total_pendiente + pendiente_mant + pendiente_proy)
+        pct_no_pago = (pendiente_total_all / total_gc) * 100 if total_gc > 0 else 0.0
+
+        kpi_data = {
+            "total_ing": total_ing,
+            "total_cost": total_cost,
+            "total_neto": total_neto,
+            "pendiente_total": pendiente_total_all,
+            "pct_no_pago": pct_no_pago,
+            "best_year": best_year,
+        }
+
+        try:
+            import plotly.express as px
+            import plotly.graph_objects as go
+        except Exception:
+            pass
+        else:
+            if not pie_gc.empty:
+                fig_gc = px.pie(
+                    pie_gc,
+                    names="Parcela",
+                    values="Pendiente GC",
+                    title="Distribución pendiente GC por parcela",
+                    hole=0.35,
+                    color_discrete_sequence=["#0B1F2A", "#1F4F5B", "#2C5B4A", "#3A6B5A", "#8DA2C8", "#A4463F"],
+                )
+                fig_gc.update_traces(textinfo="percent+label")
+                fig_gc.update_layout(height=380, margin=dict(l=5, r=5, t=40, b=10), legend_title_text="Parcela")
+            if not pie_mant.empty:
+                fig_m = px.pie(
+                    pie_mant,
+                    names="Parcela",
+                    values="Pendiente mantención",
+                    title="Distribución pendiente mantención",
+                    hole=0.35,
+                    color_discrete_sequence=["#2C5B4A", "#3A6B5A", "#8DA2C8", "#0B1F2A", "#1F4F5B", "#A4463F"],
+                )
+                fig_m.update_traces(textinfo="percent+label")
+                fig_m.update_layout(height=380, margin=dict(l=5, r=5, t=40, b=10), legend_title_text="Parcela")
+            if not pie_proj.empty:
+                fig_p = px.pie(
+                    pie_proj,
+                    names="Parcela",
+                    values="Pendiente proyecto",
+                    title="Distribución pendiente proyecto",
+                    hole=0.35,
+                    color_discrete_sequence=["#A4463F", "#8DA2C8", "#3A6B5A", "#2C5B4A", "#1F4F5B", "#0B1F2A"],
+                )
+                fig_p.update_traces(textinfo="percent+label")
+                fig_p.update_layout(height=380, margin=dict(l=5, r=5, t=40, b=10), legend_title_text="Parcela")
+
+            df_long = df_y.melt(
+                id_vars=["anio"],
+                value_vars=["ingresos", "costos", "neto"],
+                var_name="tipo",
+                value_name="monto",
+            )
+            fig_acum = px.bar(
+                df_long,
+                x="anio",
+                y="monto",
+                color="tipo",
+                barmode="group",
+                title="Ingresos, Costos y Neto — Acumulado por año",
+                labels={"anio": "Año", "monto": "Monto (CLP)", "tipo": ""},
+                color_discrete_map={"ingresos": "#2C5B4A", "costos": "#A4463F", "neto": "#8DA2C8"},
+            )
+            fig_acum.update_layout(hovermode="x unified", height=520)
+            fig_acum.update_traces(
+                texttemplate="%{y:,.0f}",
+                textposition="inside",
+                textfont=dict(color="white", size=11),
+                cliponaxis=False,
+            )
+
+            cols_cost = list(df_cost_r.columns)
+            col_monto_c = _pick_col(cols_cost, ["monto", "total", "importe", "valor"])
+            col_cc = _pick_col(cols_cost, ["cc", "categoria", "rubro"])
+            col_prov = _pick_col(cols_cost, ["proveedor"])
+            tmp_cost = None
+            if col_monto_c:
+                tmp_cost = df_cost_r.copy()
+                tmp_cost["monto_norm"] = _parse_monto_series(tmp_cost[col_monto_c])
+
+            if tmp_cost is not None and col_cc:
+                cat = (
+                    tmp_cost.groupby(col_cc, as_index=False)["monto_norm"]
+                    .sum()
+                    .sort_values("monto_norm", ascending=False)
+                )
+                cat["cum_pct"] = cat["monto_norm"].cumsum() / cat["monto_norm"].sum() * 100
+                fig_cost_cat = go.Figure()
+                fig_cost_cat.add_trace(go.Bar(
+                    x=cat[col_cc].head(12),
+                    y=cat["monto_norm"].head(12),
+                    name="Costo",
+                    marker_color="#2C5B4A",
+                    text=[f"{v:,.0f}" for v in cat["monto_norm"].head(12)],
+                    textposition="inside",
+                    textfont=dict(color="white", size=11),
+                ))
+                fig_cost_cat.add_trace(go.Scatter(
+                    x=cat[col_cc].head(12),
+                    y=cat["cum_pct"].head(12),
+                    name="% acumulado",
+                    yaxis="y2",
+                    mode="lines+markers",
+                    line=dict(color="#0B1F2A", width=2),
+                ))
+                fig_cost_cat.update_layout(
+                    title="Costo por categoría",
+                    yaxis=dict(title="Costo (CLP)"),
+                    yaxis2=dict(title="% acumulado", overlaying="y", side="right"),
+                    hovermode="x unified",
+                    height=420,
+                )
+
+            if tmp_cost is not None and col_prov:
+                prov = (
+                    tmp_cost.groupby(col_prov, as_index=False)["monto_norm"]
+                    .sum()
+                    .assign(monto_abs=lambda d: d["monto_norm"].abs())
+                    .query("monto_abs > 0")
+                    .sort_values("monto_abs", ascending=False)
+                    .head(12)
+                )
+                fig_cost_prov = px.pie(
+                    prov,
+                    names=col_prov,
+                    values="monto_abs",
+                    title="Costos por proveedor (top 12)",
+                    hole=0.35,
+                    color_discrete_sequence=["#0B1F2A", "#153A52", "#1F4F5B", "#1E3D36", "#2C5B4A", "#3A6B5A"],
+                )
+                fig_cost_prov.update_traces(textinfo="percent+label")
+                fig_cost_prov.update_layout(height=420, legend_title_text="Proveedor")
+
+        report_pdf = _build_obligaciones_report_pdf_bytes(
+            kpi_data,
+            fig_acum,
+            tabla_show,
+            fig_gc,
+            fig_m,
+            fig_p,
+            fig_cost_cat,
+            fig_cost_prov,
+        )
+        return report_pdf
+
+    col_title, col_btn = st.columns([0.78, 0.22])
+    with col_title:
+        st.title("Condominio Los Queltehues III- Dashboard")
+        st.caption("Fuente: Google Sheets (CSV publicado)")
+    with col_btn:
+        st.markdown(
+            """
+            <style>
+            div.stDownloadButton > button {
+              background: linear-gradient(135deg, #9AA1A8 0%, #E3E6E9 35%, #B7BCC2 60%, #8C949B 100%);
+              color: #0B1F2A;
+              border: 1px solid #7B8289;
+              box-shadow: inset 0 1px 0 rgba(255,255,255,0.6), 0 2px 6px rgba(15,23,42,0.12);
+              font-weight: 700;
+            }
+            div.stDownloadButton > button:hover {
+              background: linear-gradient(135deg, #8E959C 0%, #D8DDE1 35%, #AEB4BA 60%, #7F8790 100%);
+              border-color: #6E757C;
+            }
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
+        st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+        try:
+            report_pdf = _make_obligaciones_report()
+            st.download_button(
+                "Descargar reporte (PDF)",
+                data=report_pdf,
+                file_name="reporte_obligaciones.pdf",
+                mime="application/pdf",
+            )
+        except RuntimeError as e:
+            st.info(str(e))
+        except Exception as e:
+            st.error(f"No se pudo generar el reporte. Detalle: {e}")
 
     with st.sidebar:
         st.header("Actualización")
@@ -567,7 +1160,29 @@ def run_streamlit():
         df_y_show = df_y_show.rename(columns={"ingresos": "Ingresos", "costos": "Costos", "neto": "Neto", "anio": "Año"})
         for col in ["Ingresos", "Costos", "Neto"]:
             df_y_show[col] = df_y_show[col].map(lambda x: f"${x:,.0f}")
-        st.dataframe(df_y_show, use_container_width=True, height=360, hide_index=True)
+        left_tbl, right_pie = st.columns([1.2, 1])
+        with left_tbl:
+            st.dataframe(df_y_show, use_container_width=True, height=360, hide_index=True)
+        with right_pie:
+            try:
+                import plotly.express as px
+            except Exception:
+                st.error("Falta Plotly para el gráfico avanzado. Instala con: pip install plotly")
+            else:
+                if not df_y.empty:
+                    fig_pie_y = px.pie(
+                        df_y,
+                        names="anio",
+                        values="ingresos",
+                        title="Distribución de ingresos por año",
+                        hole=0.35,
+                        color_discrete_sequence=["#0B1F2A", "#1F4F5B", "#2C5B4A", "#3A6B5A", "#8DA2C8", "#A4463F"],
+                    )
+                    fig_pie_y.update_traces(textinfo="percent+label")
+                    fig_pie_y.update_layout(height=360, margin=dict(l=10, r=10, t=50, b=10), legend_title_text="Año")
+                    st.plotly_chart(fig_pie_y, use_container_width=True)
+                else:
+                    st.info("Sin datos para el gráfico.")
 
     with tab_ing:
         st.subheader("Ingresos — Análisis técnico")
@@ -738,6 +1353,7 @@ def run_streamlit():
                 hovertemplate="Parcela %{x}<br>Monto CLP %{y:,.0f}<extra></extra>",
             )
             fig.update_layout(hovermode="x unified", height=520)
+            fig.update_xaxes(type="category", tickmode="linear", dtick=1)
             st.plotly_chart(fig, use_container_width=True)
 
             if "periodo" in filt.columns:
@@ -932,7 +1548,7 @@ def run_streamlit():
                     line=dict(color="#0B1F2A", width=2),
                 ))
                 fig_c.update_layout(
-                    title="Pareto por categoría (Top 12)",
+                    title="Costo por categoría",
                     yaxis=dict(title="Costo (CLP)"),
                     yaxis2=dict(title="% acumulado", overlaying="y", side="right"),
                     hovermode="x unified",
@@ -989,6 +1605,11 @@ def run_streamlit():
         if tabla.empty:
             st.warning("No se pudieron construir obligaciones vs pagos. Revisa columnas de año/parcela/gc.")
         else:
+            fig_obl_pie = None
+            fig_gc = None
+            fig_m = None
+            fig_p = None
+            oblig_show = pd.DataFrame()
             if not oblig_anual.empty:
                 st.subheader("Obligación por año (GC)")
                 c_left, c_right = st.columns([1.2, 1])
@@ -1003,7 +1624,7 @@ def run_streamlit():
                     except Exception:
                         st.error("Falta Plotly para el gráfico avanzado. Instala con: pip install plotly")
                     else:
-                        fig_pie = px.pie(
+                        fig_obl_pie = px.pie(
                             oblig_anual,
                             names="anio",
                             values="gc_total",
@@ -1011,9 +1632,9 @@ def run_streamlit():
                             hole=0.35,
                             color_discrete_sequence=["#0B1F2A", "#1F4F5B", "#2C5B4A", "#3A6B5A", "#8DA2C8", "#A4463F"],
                         )
-                        fig_pie.update_traces(textinfo="percent+label")
-                        fig_pie.update_layout(height=260, margin=dict(l=10, r=10, t=40, b=10))
-                        st.plotly_chart(fig_pie, use_container_width=True)
+                        fig_obl_pie.update_traces(textinfo="percent+label")
+                        fig_obl_pie.update_layout(height=260, margin=dict(l=10, r=10, t=40, b=10))
+                        st.plotly_chart(fig_obl_pie, use_container_width=True)
 
             tabla_full = tabla.copy()
             tabla_full["pendiente_pos"] = tabla_full["pendiente"].clip(lower=0)
