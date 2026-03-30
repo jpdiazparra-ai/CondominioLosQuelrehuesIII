@@ -46,6 +46,12 @@ MANTENCION_CSV_URL = (
     "pub?gid=1564429404&single=true&output=csv"
 )
 
+POR_PAGAR_CSV_URL = (
+    "https://docs.google.com/spreadsheets/d/e/"
+    "2PACX-1vREdYwR32RK_ecff9UJ-DdGNjvfdnoO55jpToO-KLG62izQTqFovnWUTM-ttfmR9DNt6N1lSNKMzkjZ/"
+    "pub?gid=1804083007&single=true&output=csv"
+)
+
 
 def _normalize_colname(c: str) -> str:
     c = str(c).strip()
@@ -925,6 +931,20 @@ def run_streamlit():
         total_cost = float(df_y["costos"].sum()) if not df_y.empty else 0.0
         total_neto = float(df_y["neto"].sum()) if not df_y.empty else 0.0
         best_year = int(df_y.sort_values("neto", ascending=False)["anio"].iloc[0]) if not df_y.empty else 0
+        pendiente_proveedores = 0.0
+
+        try:
+            df_por_pagar = _load(
+                POR_PAGAR_CSV_URL,
+                CACHE_VERSION,
+                {"motivo", "presupuesto", "abono", "pendiente_a_proveedor"},
+            )
+            col_pend_prov = _pick_col(list(df_por_pagar.columns), ["pendiente_a_proveedor", "pendiente_proveedores"])
+            if col_pend_prov:
+                pendiente_proveedores = float(_parse_monto_series(df_por_pagar[col_pend_prov]).sum())
+        except Exception:
+            pendiente_proveedores = 0.0
+        banco_futuro = total_neto - pendiente_proveedores
 
         # KPI de pendientes (desde Obligaciones)
         try:
@@ -1026,22 +1046,44 @@ def run_streamlit():
         st.markdown(
             """
             <style>
-            .kpi-row {display:flex;gap:16px;overflow-x:auto;padding-bottom:6px;margin:8px 0 18px 0;}
-            .kpi-card {min-width:220px;flex:0 0 220px;background:#fff;border:1px solid #E2E8F0;border-radius:16px;padding:14px 16px;box-shadow:0 2px 12px rgba(15,23,42,0.06);position:relative;}
-            .kpi-card:before {content:"";position:absolute;left:0;top:0;height:100%;width:6px;border-radius:16px 0 0 16px;}
-            .kpi-title {font-size:11px;letter-spacing:0.08em;color:#6B7280;font-weight:700;}
-            .kpi-value {font-size:22px;font-weight:800;margin-top:6px;}
-            .kpi-sub {font-size:11px;color:#94A3B8;margin-top:6px;}
+            .kpi-hero {background:linear-gradient(135deg,#0F2D3A 0%,#174A5A 100%);border-radius:22px;padding:26px 28px;box-shadow:0 10px 30px rgba(15,23,42,0.16);margin:8px 0 18px 0;color:#F8FAFC;position:relative;overflow:hidden;}
+            .kpi-hero:after {content:"";position:absolute;right:-60px;top:-60px;width:220px;height:220px;border-radius:999px;background:rgba(255,255,255,0.08);}
+            .kpi-hero-title {font-size:13px;letter-spacing:0.12em;font-weight:800;color:#CFE7EE;position:relative;z-index:1;}
+            .kpi-hero-value {font-size:46px;line-height:1.05;font-weight:900;margin-top:10px;position:relative;z-index:1;}
+            .kpi-hero-sub {font-size:14px;color:#D9EAF0;margin-top:8px;position:relative;z-index:1;}
+            .kpi-hero-secondary {margin-top:18px;padding-top:18px;border-top:1px solid rgba(255,255,255,0.18);position:relative;z-index:1;}
+            .kpi-hero-secondary-title {font-size:12px;letter-spacing:0.1em;font-weight:800;color:#CFE7EE;}
+            .kpi-hero-secondary-value {font-size:30px;line-height:1.08;font-weight:900;margin-top:8px;color:#FFFFFF;}
+            .kpi-hero-secondary-sub {font-size:13px;color:#D9EAF0;margin-top:6px;}
+            .kpi-row {display:grid;grid-template-columns:repeat(3, minmax(0,1fr));gap:16px;margin:8px 0 18px 0;align-items:stretch;}
+            .kpi-card {background:linear-gradient(180deg,#FFFFFF 0%,#F8FAFC 100%);border:1px solid #D9E2EC;border-radius:18px;padding:18px 18px 16px 18px;box-shadow:0 6px 18px rgba(15,23,42,0.08);position:relative;min-height:128px;overflow:hidden;}
+            .kpi-card:before {content:"";position:absolute;left:0;top:0;height:100%;width:7px;border-radius:18px 0 0 18px;}
+            .kpi-card:after {content:"";position:absolute;right:-24px;bottom:-24px;width:88px;height:88px;border-radius:999px;background:rgba(148,163,184,0.08);}
+            .kpi-title {font-size:12px;letter-spacing:0.12em;color:#667085;font-weight:800;position:relative;z-index:1;}
+            .kpi-value {font-size:26px;line-height:1.1;font-weight:900;margin-top:18px;color:#101828;position:relative;z-index:1;}
+            .kpi-sub {font-size:12px;color:#98A2B3;margin-top:14px;position:relative;z-index:1;}
             .kpi-green:before {background:#22C55E;}
             .kpi-red:before {background:#EF4444;}
-            .kpi-navy:before {background:#0B1F2A;}
-            .kpi-teal:before {background:#2C5B4A;}
+            .kpi-navy:before {background:#0F172A;}
+            .kpi-teal:before {background:#0F766E;}
+            @media (max-width: 1100px){.kpi-row{grid-template-columns:repeat(2, minmax(0,1fr));}.kpi-hero-value{font-size:38px;}}
+            @media (max-width: 700px){.kpi-row{grid-template-columns:1fr;}.kpi-hero{padding:22px 20px;}.kpi-hero-value{font-size:32px;}.kpi-hero-secondary-value{font-size:24px;}}
             </style>
             """,
             unsafe_allow_html=True,
         )
         st.markdown(
             f"""
+            <div class="kpi-hero">
+              <div class="kpi-hero-title">NETO ACUMULADO - BANCO</div>
+              <div class="kpi-hero-value">${total_neto:,.0f}</div>
+              <div class="kpi-hero-sub">Resultado histórico acumulado: ingresos menos costos</div>
+              <div class="kpi-hero-secondary">
+                <div class="kpi-hero-secondary-title">BANCO FUTURO SIN CUENTAS POR PAGAR</div>
+                <div class="kpi-hero-secondary-value">${banco_futuro:,.0f}</div>
+                <div class="kpi-hero-secondary-sub">Neto acumulado menos pendiente a proveedores</div>
+              </div>
+            </div>
             <div class="kpi-row">
               <div class="kpi-card kpi-green">
                 <div class="kpi-title">TOTAL INGRESOS</div>
@@ -1053,15 +1095,15 @@ def run_streamlit():
                 <div class="kpi-value">${total_cost:,.0f}</div>
                 <div class="kpi-sub">Suma histórica</div>
               </div>
-              <div class="kpi-card kpi-teal">
-                <div class="kpi-title">NETO ACUMULADO - BANCO</div>
-                <div class="kpi-value">${total_neto:,.0f}</div>
-                <div class="kpi-sub">Ingresos - Costos</div>
-              </div>
               <div class="kpi-card kpi-red">
                 <div class="kpi-title">PENDIENTE DE PAGO TOTAL</div>
                 <div class="kpi-value">${pendiente_total:,.0f}</div>
                 <div class="kpi-sub">GC + mantención + proyecto</div>
+              </div>
+              <div class="kpi-card kpi-teal">
+                <div class="kpi-title">PENDIENTE A PROVEEDORES</div>
+                <div class="kpi-value">${pendiente_proveedores:,.0f}</div>
+                <div class="kpi-sub">Pestaña Por pagar</div>
               </div>
               <div class="kpi-card kpi-red">
                 <div class="kpi-title">% NO PAGO TOTAL</div>
@@ -1588,6 +1630,11 @@ def run_streamlit():
             df_prop = _load(PROPIETARIOS_CSV_URL, CACHE_VERSION, {"parcela", "propietario"})
             df_td = load_td23_table(TD23_CSV_URL)
             df_mant = load_mantencion_table(MANTENCION_CSV_URL)
+            df_por_pagar_o = _load(
+                POR_PAGAR_CSV_URL,
+                CACHE_VERSION,
+                {"motivo", "presupuesto", "abono", "pendiente_a_proveedor"},
+            )
 
         cols_ing_o = list(df_ing_o.columns)
         cand_concepto = ["detalle", "concepto", "glosa", "descripcion", "tipo", "categoria", "cc", "ccc", "medio"]
@@ -1720,10 +1767,14 @@ def run_streamlit():
                         tabla_full = tabla_full.drop(columns=["pagado_cc"])
 
             gc_total_parcela = float(tabla_full["gc_total"].max()) if not tabla_full.empty else 0.0
-            total_pagado = float(tabla_full["pagado"].sum()) if not tabla_full.empty else 0.0
             total_pendiente = float(tabla_full["pendiente_pos"].sum()) if not tabla_full.empty else 0.0
             total_favor = float(tabla_full["saldo_favor"].sum()) if not tabla_full.empty else 0.0
             pendiente_mant = float(tabla_full["Mantención"].sum()) if "Mantención" in tabla_full.columns else 0.0
+            col_pend_prov_o = _pick_col(list(df_por_pagar_o.columns), ["pendiente_a_proveedor", "pendiente_proveedores"])
+            pendiente_proveedores = (
+                float(_parse_monto_series(df_por_pagar_o[col_pend_prov_o]).sum())
+                if col_pend_prov_o else 0.0
+            )
             # Suma pendientes por CC (ej. Proyecto)
             cc_cols = [c for c in tabla_full.columns if c.startswith("Pendiente ")]
             pendiente_proy = float(tabla_full[cc_cols].sum().sum()) if cc_cols else 0.0
@@ -1756,10 +1807,10 @@ def run_streamlit():
                     <div class="kpi-value">${gc_total_parcela:,.0f}</div>
                     <div class="kpi-sub">Total GC acumulado</div>
                   </div>
-                  <div class="kpi-card kpi-green">
-                    <div class="kpi-title">TOTAL PAGADO</div>
-                    <div class="kpi-value">${total_pagado:,.0f}</div>
-                    <div class="kpi-sub">Ingresos reconocidos como GC</div>
+                  <div class="kpi-card kpi-teal">
+                    <div class="kpi-title">PENDIENTE A PROVEEDORES</div>
+                    <div class="kpi-value">${pendiente_proveedores:,.0f}</div>
+                    <div class="kpi-sub">Pestaña Por pagar</div>
                   </div>
                   <div class="kpi-card kpi-red">
                     <div class="kpi-title">PENDIENTE GC</div>
@@ -1787,6 +1838,167 @@ def run_streamlit():
             )
 
             st.subheader("Obligación acumulada vs Pagos")
+            try:
+                import plotly.graph_objects as go
+                from plotly.subplots import make_subplots
+            except Exception:
+                st.error("Falta Plotly para el gráfico avanzado. Instala con: pip install plotly")
+            else:
+                viz_df = tabla_full.copy()
+                viz_df["cumplimiento_pct"] = (
+                    (viz_df["pagado"] / viz_df["gc_total"].replace(0, pd.NA)) * 100
+                ).fillna(0).clip(lower=0)
+                viz_df["pendiente_plot"] = viz_df["pendiente_pos"]
+                viz_df["favor_plot"] = -viz_df["saldo_favor"]
+                parcelas_orden = list(range(17, 37))
+                viz_df["parcela"] = pd.to_numeric(viz_df["parcela"], errors="coerce")
+                viz_df = (
+                    pd.DataFrame({"parcela": parcelas_orden})
+                    .merge(viz_df, on="parcela", how="left")
+                    .fillna(
+                        {
+                            "gc_total": 0,
+                            "pagado": 0,
+                            "cumplimiento_pct": 0,
+                            "pendiente_plot": 0,
+                            "favor_plot": 0,
+                            "saldo_favor": 0,
+                        }
+                    )
+                )
+                viz_df["Parcela"] = viz_df["parcela"].astype(int).astype(str)
+                fig_obl_comp = make_subplots(
+                    rows=2,
+                    cols=1,
+                    shared_xaxes=False,
+                    vertical_spacing=0.12,
+                    row_heights=[0.68, 0.32],
+                    subplot_titles=(
+                        "Cobertura de pagos por parcela (17 al 36)",
+                        "Brecha por parcela: pendiente o saldo a favor",
+                    ),
+                )
+                fig_obl_comp.add_trace(
+                    go.Bar(
+                        y=viz_df["Parcela"],
+                        x=viz_df["gc_total"],
+                        name="Obligación",
+                        orientation="h",
+                        marker=dict(color="#E2E8F0", line=dict(color="#CBD5E1", width=1)),
+                        hovertemplate="Parcela %{y}<br>Obligación CLP %{x:,.0f}<extra></extra>",
+                    ),
+                    row=1,
+                    col=1,
+                )
+                fig_obl_comp.add_trace(
+                    go.Bar(
+                        y=viz_df["Parcela"],
+                        x=viz_df["pagado"],
+                        name="Pagado",
+                        orientation="h",
+                        marker=dict(color="#15803D"),
+                        text=viz_df["cumplimiento_pct"].map(lambda v: f"{v:.0f}%"),
+                        textposition="inside",
+                        textfont=dict(color="white", size=11),
+                        hovertemplate="Parcela %{y}<br>Pagado CLP %{x:,.0f}<br>Cumplimiento %{text}<extra></extra>",
+                    ),
+                    row=1,
+                    col=1,
+                )
+                fig_obl_comp.add_trace(
+                    go.Bar(
+                        y=viz_df["Parcela"],
+                        x=viz_df["pendiente_plot"],
+                        name="Pendiente GC",
+                        orientation="h",
+                        marker=dict(color="#DC2626"),
+                        hovertemplate="Parcela %{y}<br>Pendiente CLP %{x:,.0f}<extra></extra>",
+                    ),
+                    row=2,
+                    col=1,
+                )
+                fig_obl_comp.add_trace(
+                    go.Bar(
+                        y=viz_df["Parcela"],
+                        x=viz_df["favor_plot"],
+                        name="Saldo a favor",
+                        orientation="h",
+                        marker=dict(color="#0EA5A4"),
+                        customdata=viz_df["saldo_favor"],
+                        hovertemplate="Parcela %{y}<br>Saldo a favor CLP %{customdata:,.0f}<extra></extra>",
+                    ),
+                    row=2,
+                    col=1,
+                )
+                fig_obl_comp.add_vline(
+                    x=gc_total_parcela,
+                    line_dash="dot",
+                    line_color="#475569",
+                    line_width=2,
+                    row=1,
+                    col=1,
+                )
+                fig_obl_comp.update_layout(
+                    barmode="overlay",
+                    height=920,
+                    margin=dict(l=20, r=20, t=80, b=30),
+                    paper_bgcolor="white",
+                    plot_bgcolor="#F8FAFC",
+                    hovermode="y unified",
+                    legend=dict(orientation="h", yanchor="bottom", y=1.04, xanchor="left", x=0),
+                    bargap=0.16,
+                )
+                fig_obl_comp.update_xaxes(
+                    title_text="Monto (CLP)",
+                    gridcolor="#CBD5E1",
+                    zeroline=False,
+                    tickformat=",.0f",
+                    row=1,
+                    col=1,
+                )
+                fig_obl_comp.update_xaxes(
+                    title_text="Pendiente (+) / Saldo a favor (-)",
+                    gridcolor="#CBD5E1",
+                    zeroline=True,
+                    zerolinecolor="#64748B",
+                    tickformat=",.0f",
+                    row=2,
+                    col=1,
+                )
+                fig_obl_comp.update_yaxes(
+                    title_text="Parcela",
+                    categoryorder="array",
+                    categoryarray=viz_df["Parcela"].tolist()[::-1],
+                    tickmode="array",
+                    tickvals=viz_df["Parcela"].tolist(),
+                    ticktext=viz_df["Parcela"].tolist(),
+                    tickfont=dict(size=12),
+                    row=1,
+                    col=1,
+                )
+                fig_obl_comp.update_yaxes(
+                    title_text="Parcela",
+                    categoryorder="array",
+                    categoryarray=viz_df["Parcela"].tolist()[::-1],
+                    tickmode="array",
+                    tickvals=viz_df["Parcela"].tolist(),
+                    ticktext=viz_df["Parcela"].tolist(),
+                    tickfont=dict(size=12),
+                    row=2,
+                    col=1,
+                )
+                fig_obl_comp.add_annotation(
+                    x=1,
+                    y=1.06,
+                    xref="paper",
+                    yref="paper",
+                    text=f"Obligación referencial por parcela: ${gc_total_parcela:,.0f}",
+                    showarrow=False,
+                    font=dict(size=12, color="#64748B"),
+                    xanchor="right",
+                )
+                st.plotly_chart(fig_obl_comp, use_container_width=True)
+
             tabla_show = tabla_full.copy()
             tabla_show = tabla_show.rename(
                 columns={
@@ -1893,8 +2105,18 @@ def run_streamlit():
                             hole=0.35,
                             color_discrete_sequence=["#0B1F2A", "#1F4F5B", "#2C5B4A", "#3A6B5A", "#8DA2C8", "#A4463F"],
                         )
-                        fig_gc.update_traces(textinfo="percent+label")
-                        fig_gc.update_layout(height=380, margin=dict(l=5, r=5, t=40, b=10), legend_title_text="Parcela")
+                        fig_gc.update_traces(
+                            textinfo="label+percent",
+                            textposition="auto",
+                            texttemplate="%{label}<br>%{percent}",
+                            automargin=True,
+                            hovertemplate="Parcela %{label}<br>Participación %{percent}<extra></extra>",
+                        )
+                        fig_gc.update_layout(
+                            height=520,
+                            margin=dict(l=20, r=20, t=40, b=80),
+                            legend_title_text="Parcela",
+                        )
                         st.plotly_chart(fig_gc, use_container_width=True)
                     else:
                         st.info("Sin pendiente GC.")
@@ -1908,8 +2130,18 @@ def run_streamlit():
                             hole=0.35,
                             color_discrete_sequence=["#2C5B4A", "#3A6B5A", "#8DA2C8", "#0B1F2A", "#1F4F5B", "#A4463F"],
                         )
-                        fig_m.update_traces(textinfo="percent+label")
-                        fig_m.update_layout(height=380, margin=dict(l=5, r=5, t=40, b=10), legend_title_text="Parcela")
+                        fig_m.update_traces(
+                            textinfo="label+percent",
+                            textposition="auto",
+                            texttemplate="%{label}<br>%{percent}",
+                            automargin=True,
+                            hovertemplate="Parcela %{label}<br>Participación %{percent}<extra></extra>",
+                        )
+                        fig_m.update_layout(
+                            height=520,
+                            margin=dict(l=20, r=20, t=40, b=80),
+                            legend_title_text="Parcela",
+                        )
                         st.plotly_chart(fig_m, use_container_width=True)
                     else:
                         st.info("Sin pendiente mantención.")
@@ -1923,32 +2155,29 @@ def run_streamlit():
                             hole=0.35,
                             color_discrete_sequence=["#A4463F", "#8DA2C8", "#3A6B5A", "#2C5B4A", "#1F4F5B", "#0B1F2A"],
                         )
-                        fig_p.update_traces(textinfo="percent+label")
-                        fig_p.update_layout(height=380, margin=dict(l=5, r=5, t=40, b=10), legend_title_text="Parcela")
+                        fig_p.update_traces(
+                            textinfo="label+percent",
+                            textposition="auto",
+                            texttemplate="%{label}<br>%{percent}",
+                            automargin=True,
+                            hovertemplate="Parcela %{label}<br>Participación %{percent}<extra></extra>",
+                        )
+                        fig_p.update_layout(
+                            height=520,
+                            margin=dict(l=20, r=20, t=40, b=80),
+                            legend_title_text="Parcela",
+                        )
                         st.plotly_chart(fig_p, use_container_width=True)
                     else:
                         st.info("Sin pendiente proyecto.")
 
             st.subheader("Detalle de GC pendientes por parcela")
-            tabla_prop = tabla_full[["parcela", "pendiente_pos", "gc_total"]].copy()
-            cols_prop = list(df_prop.columns)
-            col_parc_p = _pick_col(cols_prop, ["n_parcela", "numero_parcela", "parcela", "lote", "unidad", "sitio"])
-            col_name = _pick_col(cols_prop, ["nombre", "propietario", "dueno", "dueño"])
-            if col_parc_p and col_name:
-                prop_map = df_prop.copy()
-                prop_map["parcela"] = pd.to_numeric(
-                    prop_map[col_parc_p].astype(str).str.replace(r"[^\d]", "", regex=True),
-                    errors="coerce",
-                )
-                prop_map = prop_map.dropna(subset=["parcela"])
-                prop_map = prop_map[["parcela", col_name]].rename(columns={col_name: "Propietario"})
-                tabla_prop = tabla_prop.merge(prop_map, on="parcela", how="left")
-            else:
-                tabla_prop["Propietario"] = ""
+            tabla_prop = tabla_show[["Parcela", "Propietario", "Total por pagar"]].copy()
+            tabla_prop = tabla_prop.rename(columns={"Total por pagar": "Pendiente"})
 
-            total_pend_global = float(tabla_prop["pendiente_pos"].sum()) if not tabla_prop.empty else 0.0
+            total_pend_global = float(tabla_prop["Pendiente"].sum()) if not tabla_prop.empty else 0.0
             if total_pend_global > 0:
-                tabla_prop["pct_pendiente"] = (tabla_prop["pendiente_pos"] / total_pend_global) * 100
+                tabla_prop["pct_pendiente"] = (tabla_prop["Pendiente"] / total_pend_global) * 100
             else:
                 tabla_prop["pct_pendiente"] = 0.0
             # Último depósito por parcela
@@ -1964,14 +2193,11 @@ def run_streamlit():
                 ult["Fecha"] = pd.to_datetime(ult[col_fecha_det], dayfirst=True, errors="coerce")
                 ult = ult.dropna(subset=["Parcela", "Fecha"])
                 ult = ult.groupby("Parcela", as_index=False)["Fecha"].max()
-                tabla_prop = tabla_prop.merge(ult, left_on="parcela", right_on="Parcela", how="left")
-                tabla_prop = tabla_prop.drop(columns=["Parcela"])
+                tabla_prop = tabla_prop.merge(ult, on="Parcela", how="left")
             else:
                 tabla_prop["Fecha"] = pd.NaT
             tabla_prop = tabla_prop.rename(
                 columns={
-                    "parcela": "Parcela",
-                    "pendiente_pos": "Pendiente",
                     "pct_pendiente": "% Pendiente",
                 }
             )
@@ -2017,8 +2243,17 @@ def run_streamlit():
                             color_discrete_sequence=["#0B1F2A", "#1F4F5B", "#2C5B4A", "#3A6B5A", "#8DA2C8", "#A4463F"],
                         )
                         fig_pie.update_layout(legend_title_text="Parcela")
-                        fig_pie.update_traces(textinfo="percent+label")
-                        fig_pie.update_layout(height=420, margin=dict(l=10, r=10, t=40, b=10))
+                        fig_pie.update_traces(
+                            textinfo="label+percent",
+                            textposition="auto",
+                            texttemplate="%{label}<br>%{percent}",
+                            automargin=True,
+                            hovertemplate="Parcela %{label}<br>Participación %{percent}<extra></extra>",
+                        )
+                        fig_pie.update_layout(
+                            height=520,
+                            margin=dict(l=20, r=20, t=40, b=80),
+                        )
                         st.plotly_chart(fig_pie, use_container_width=True)
                 else:
                     st.info("No hay pendientes positivos para graficar.")
