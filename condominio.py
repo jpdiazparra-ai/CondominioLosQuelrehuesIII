@@ -610,30 +610,42 @@ def run_streamlit():
           background: linear-gradient(145deg, #002b41 0%, #00475b 100%);
           box-shadow: 0 12px 24px rgba(0, 43, 65, 0.22);
         }
-        .side-nav {
+        [data-testid="stSidebar"] [role="radiogroup"] {
           display: grid;
           gap: 13px;
         }
-        .side-nav-item {
+        [data-testid="stSidebar"] [data-testid="stRadio"] > label {
+          display: none;
+        }
+        [data-testid="stSidebar"] [role="radiogroup"] label {
           min-height: 86px;
           border-radius: 10px;
           display: grid;
           place-items: center;
           align-content: center;
           gap: 8px;
+          padding: 8px 4px;
           color: #4b596c;
           font-size: 13px;
-          font-weight: 600;
+          font-weight: 700;
           text-align: center;
+          line-height: 1.2;
+          transition: background 0.15s ease, color 0.15s ease;
         }
-        .side-nav-item.active {
+        [data-testid="stSidebar"] [role="radiogroup"] label:hover {
+          background: #f5f8fc;
+        }
+        [data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked) {
           background: #eef5ff;
           color: #0066ff;
         }
-        .side-nav-icon {
-          font-size: 24px;
-          line-height: 1;
-          filter: grayscale(0.1);
+        [data-testid="stSidebar"] [role="radiogroup"] label > div:first-child {
+          display: none;
+        }
+        [data-testid="stSidebar"] [role="radiogroup"] p {
+          font-size: 13px;
+          font-weight: 700;
+          margin: 0;
         }
         .side-about {
           position: fixed;
@@ -700,19 +712,6 @@ def run_streamlit():
           border-color: #c5cfdd;
           background: #fbfdff;
           color: #0f172a;
-        }
-        .stTabs [data-baseweb="tab-list"] {
-          gap: 28px;
-          border-bottom: 1px solid #dde5ef;
-        }
-        .stTabs [data-baseweb="tab"] {
-          height: 54px;
-          padding: 0 8px;
-          color: #2f394d;
-          font-weight: 700;
-        }
-        .stTabs [aria-selected="true"] {
-          color: var(--dash-blue);
         }
         .dash-hero {
           min-height: 386px;
@@ -928,15 +927,23 @@ def run_streamlit():
         st.markdown(
             """
             <div class="side-logo">🏢</div>
-            <div class="side-nav">
-              <div class="side-nav-item active"><div class="side-nav-icon">⌂</div><div>General</div></div>
-              <div class="side-nav-item"><div class="side-nav-icon">↗</div><div>Ingresos V2.3</div></div>
-              <div class="side-nav-item"><div class="side-nav-icon">$</div><div>Costos</div></div>
-              <div class="side-nav-item"><div class="side-nav-icon">▤</div><div>Obligaciones</div></div>
-            </div>
             <div class="side-about"><div style="font-size:24px;">ⓘ</div><div>Acerca de</div></div>
             """,
             unsafe_allow_html=True,
+        )
+        section_options = ["General", "Ingresos V2.3", "Costos", "Obligaciones"]
+        section_labels = {
+            "General": "⌂\nGeneral",
+            "Ingresos V2.3": "↗\nIngresos V2.3",
+            "Costos": "$\nCostos",
+            "Obligaciones": "▤\nObligaciones",
+        }
+        selected_section = st.radio(
+            "Navegación",
+            section_options,
+            index=0,
+            format_func=lambda option: section_labels[option],
+            label_visibility="collapsed",
         )
 
     @st.cache_data(show_spinner=False)
@@ -1316,9 +1323,7 @@ def run_streamlit():
         except Exception as e:
             st.error(f"No se pudo generar el reporte. Detalle: {e}")
 
-    tab_general, tab_ing, tab_cost, tab_obl = st.tabs(["General", "Ingresos V2.3", "Costos", "Obligaciones"])
-
-    with tab_general:
+    if selected_section == "General":
         with st.spinner("Cargando datos generales..."):
             df_ing_g = _load(INGRESOS_CSV_URL, CACHE_VERSION, {"fecha", "parcela", "abono"})
             df_cost_g = _load(COSTOS_CSV_URL, CACHE_VERSION, {"monto", "proveedor", "cc"})
@@ -1647,7 +1652,7 @@ def run_streamlit():
                 else:
                     st.info("Sin datos para el gráfico.")
 
-    with tab_ing:
+    if selected_section == "Ingresos V2.3":
         st.subheader("Ingresos — Análisis técnico")
         with st.spinner("Cargando ingresos..."):
             df_ing = _load(INGRESOS_CSV_URL, CACHE_VERSION, {"fecha", "parcela", "abono"})
@@ -1839,7 +1844,7 @@ def run_streamlit():
         st.subheader("Detalle de ingresos (filtrado)")
         st.dataframe(filt, use_container_width=True)
 
-    with tab_cost:
+    if selected_section == "Costos":
         st.subheader("Costos — Análisis técnico")
         with st.spinner("Cargando costos..."):
             df_cost = _load(COSTOS_CSV_URL, CACHE_VERSION, {"monto", "proveedor", "cc"})
@@ -2043,7 +2048,7 @@ def run_streamlit():
         st.subheader("Detalle de costos (filtrado)")
         st.dataframe(filt, use_container_width=True)
 
-    with tab_obl:
+    if selected_section == "Obligaciones":
         st.subheader("Obligaciones vs Pagos (por año y parcela)")
         with st.spinner("Cargando obligaciones y pagos..."):
             df_obl = _load(OBLIGACIONES_CSV_URL, CACHE_VERSION, {"ano", "anio", "año", "parcela", "gc"})
