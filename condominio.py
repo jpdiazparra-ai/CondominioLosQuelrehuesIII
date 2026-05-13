@@ -576,7 +576,7 @@ def run_streamlit():
           color: var(--dash-ink);
         }
         .block-container {
-          padding-top: 2.15rem;
+          padding-top: 0.65rem;
           padding-left: 2.75rem;
           padding-right: 2.75rem;
           max-width: 1680px;
@@ -673,19 +673,6 @@ def run_streamlit():
           line-height: 1;
           letter-spacing: 0;
           font-weight: 900;
-        }
-        .app-subtitle {
-          margin-top: 10px;
-          color: #6a7588;
-          font-size: 1.85rem;
-          line-height: 1.1;
-          font-weight: 800;
-        }
-        .app-source {
-          margin-top: 22px;
-          color: #6a7588;
-          font-size: 1rem;
-          font-weight: 600;
         }
         .top-actions {
           display: flex;
@@ -913,7 +900,6 @@ def run_streamlit():
           [data-testid="stSidebar"] { min-width: 112px !important; max-width: 112px !important; }
           .top-shell { display: block; }
           .top-actions { justify-content: flex-start; margin-top: 20px; }
-          .app-subtitle { font-size: 1.35rem; }
           .dash-hero { grid-template-columns: 1fr; padding: 28px 24px; }
           .bank-art { display: none; }
           .dash-kpi-grid { grid-template-columns: 1fr; gap: 16px; }
@@ -1295,8 +1281,6 @@ def run_streamlit():
         <div class="top-shell">
           <div>
             <h1 class="app-title">Condominio Los Queltehues III</h1>
-            <div class="app-subtitle">Dashboard</div>
-            <div class="app-source">◴&nbsp;&nbsp;Fuente: Google Sheets (CSV publicado)</div>
           </div>
           <div class="top-actions" aria-hidden="true">
             <span>☼</span><span>☆</span><span>♢</span><span>◉</span><span>⋮</span>
