@@ -5,6 +5,7 @@ Condominio Los Queltehues III - Dashboard (General + Ingresos V2.3 + Costos + Ob
 from __future__ import annotations
 
 import base64
+import html
 import io
 import re
 from typing import Optional
@@ -513,7 +514,430 @@ def load_mantencion_table(url: str) -> pd.DataFrame:
 def run_streamlit():
     import streamlit as st
 
-    st.set_page_config(page_title="Condominio Los Quelrehues III - Dashboard", layout="wide")
+    st.set_page_config(
+        page_title="Condominio Los Quelrehues III - Dashboard",
+        page_icon="🏢",
+        layout="wide",
+        initial_sidebar_state="expanded",
+    )
+
+    def _sparkline_svg(color: str, points: str = "0,28 20,18 38,21 56,10 76,22 96,4 116,15 136,10 156,21") -> str:
+        return (
+            "<svg class='dash-sparkline' viewBox='0 0 156 34' preserveAspectRatio='none' aria-hidden='true'>"
+            f"<polyline points='{points}' fill='none' stroke='{color}' stroke-width='3' "
+            "stroke-linecap='round' stroke-linejoin='round'/>"
+            f"<g fill='{color}'>"
+            + "".join(
+                f"<circle cx='{p.split(',')[0]}' cy='{p.split(',')[1]}' r='2.6'/>"
+                for p in points.split()
+            )
+            + "</g></svg>"
+        )
+
+    def _kpi_tile(icon: str, title: str, value: str, subtitle: str, tone: str, spark_points: str = "") -> str:
+        color_map = {
+            "green": "#00a86b",
+            "red": "#ff2d2d",
+            "violet": "#8a2be2",
+            "teal": "#008b78",
+            "blue": "#0f6bff",
+        }
+        color = color_map.get(tone, "#0f6bff")
+        spark = _sparkline_svg(color, spark_points) if spark_points else ""
+        return f"""
+        <div class="dash-kpi-card dash-{tone}">
+          <div class="dash-icon">{icon}</div>
+          <div class="dash-kpi-title">{html.escape(title)}</div>
+          <div class="dash-kpi-value">{html.escape(value)}</div>
+          <div class="dash-kpi-sub">{html.escape(subtitle)}</div>
+          {spark}
+        </div>
+        """
+
+    st.markdown(
+        """
+        <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
+        :root {
+          --dash-ink: #071326;
+          --dash-muted: #64748b;
+          --dash-line: #e5edf6;
+          --dash-blue: #0f6bff;
+          --dash-navy: #002b41;
+          --dash-navy-2: #004b5f;
+        }
+        html, body, [class*="css"] {
+          font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+        .stApp {
+          background:
+            radial-gradient(circle at 78% 8%, rgba(15, 107, 255, 0.05), transparent 30%),
+            linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+          color: var(--dash-ink);
+        }
+        .block-container {
+          padding-top: 2.15rem;
+          padding-left: 2.75rem;
+          padding-right: 2.75rem;
+          max-width: 1680px;
+        }
+        [data-testid="stSidebar"] {
+          background: rgba(255, 255, 255, 0.93);
+          border-right: 1px solid #e6edf5;
+          box-shadow: 10px 0 28px rgba(15, 23, 42, 0.04);
+          min-width: 138px !important;
+          max-width: 138px !important;
+        }
+        [data-testid="stSidebar"] > div:first-child {
+          padding: 1.7rem 1rem 1rem 1rem;
+        }
+        [data-testid="stSidebar"] h1,
+        [data-testid="stSidebar"] h2,
+        [data-testid="stSidebar"] h3,
+        [data-testid="stSidebar"] .stButton,
+        [data-testid="stSidebar"] hr {
+          display: none;
+        }
+        .side-logo {
+          width: 58px;
+          height: 58px;
+          margin: 0 auto 30px auto;
+          border-radius: 10px;
+          display: grid;
+          place-items: center;
+          color: #eaffff;
+          font-size: 30px;
+          background: linear-gradient(145deg, #002b41 0%, #00475b 100%);
+          box-shadow: 0 12px 24px rgba(0, 43, 65, 0.22);
+        }
+        .side-nav {
+          display: grid;
+          gap: 13px;
+        }
+        .side-nav-item {
+          min-height: 86px;
+          border-radius: 10px;
+          display: grid;
+          place-items: center;
+          align-content: center;
+          gap: 8px;
+          color: #4b596c;
+          font-size: 13px;
+          font-weight: 600;
+          text-align: center;
+        }
+        .side-nav-item.active {
+          background: #eef5ff;
+          color: #0066ff;
+        }
+        .side-nav-icon {
+          font-size: 24px;
+          line-height: 1;
+          filter: grayscale(0.1);
+        }
+        .side-about {
+          position: fixed;
+          bottom: 2rem;
+          left: 0;
+          width: 138px;
+          display: grid;
+          place-items: center;
+          gap: 6px;
+          color: #526174;
+          font-size: 13px;
+          font-weight: 500;
+        }
+        .top-shell {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          gap: 24px;
+          margin-bottom: 22px;
+        }
+        .app-title {
+          margin: 0;
+          color: var(--dash-ink);
+          font-size: clamp(2.2rem, 4vw, 3.25rem);
+          line-height: 1;
+          letter-spacing: 0;
+          font-weight: 900;
+        }
+        .app-subtitle {
+          margin-top: 10px;
+          color: #6a7588;
+          font-size: 1.85rem;
+          line-height: 1.1;
+          font-weight: 800;
+        }
+        .app-source {
+          margin-top: 22px;
+          color: #6a7588;
+          font-size: 1rem;
+          font-weight: 600;
+        }
+        .top-actions {
+          display: flex;
+          justify-content: flex-end;
+          align-items: center;
+          gap: 22px;
+          color: #35445c;
+          font-size: 25px;
+          line-height: 1;
+          margin-top: 0.1rem;
+          min-width: 230px;
+        }
+        div.stDownloadButton > button {
+          min-height: 60px;
+          border-radius: 8px;
+          border: 1px solid #d8e0eb;
+          background: #ffffff;
+          color: #101828;
+          box-shadow: 0 8px 18px rgba(15,23,42,0.12);
+          font-weight: 800;
+          padding: 0 1.55rem;
+        }
+        div.stDownloadButton > button:hover {
+          border-color: #c5cfdd;
+          background: #fbfdff;
+          color: #0f172a;
+        }
+        .stTabs [data-baseweb="tab-list"] {
+          gap: 28px;
+          border-bottom: 1px solid #dde5ef;
+        }
+        .stTabs [data-baseweb="tab"] {
+          height: 54px;
+          padding: 0 8px;
+          color: #2f394d;
+          font-weight: 700;
+        }
+        .stTabs [aria-selected="true"] {
+          color: var(--dash-blue);
+        }
+        .dash-hero {
+          min-height: 386px;
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) 360px;
+          gap: 32px;
+          align-items: center;
+          margin: 38px 0 36px 0;
+          padding: 38px 42px;
+          border-radius: 17px;
+          position: relative;
+          overflow: hidden;
+          color: #ffffff;
+          background:
+            radial-gradient(circle at 89% 18%, rgba(122, 231, 230, 0.16), transparent 18%),
+            radial-gradient(circle at 84% 76%, rgba(122, 231, 230, 0.14), transparent 28%),
+            linear-gradient(130deg, #002b41 0%, #003a50 45%, #00465a 100%);
+          box-shadow: 0 18px 28px rgba(15, 23, 42, 0.22);
+        }
+        .dash-hero::before {
+          content: "";
+          position: absolute;
+          inset: auto -6% -18% 16%;
+          height: 150px;
+          background: rgba(22, 92, 116, 0.25);
+          border-radius: 55% 45% 0 0;
+        }
+        .dash-hero-eyebrow,
+        .dash-hero-label {
+          position: relative;
+          z-index: 1;
+          font-size: 0.96rem;
+          letter-spacing: 0.1em;
+          font-weight: 900;
+          text-transform: uppercase;
+        }
+        .dash-hero-value {
+          position: relative;
+          z-index: 1;
+          margin-top: 22px;
+          font-size: clamp(3.1rem, 5.2vw, 4.85rem);
+          line-height: 0.98;
+          font-weight: 900;
+          text-shadow: 0 3px 0 rgba(255, 255, 255, 0.12), 0 7px 18px rgba(0, 0, 0, 0.25);
+        }
+        .dash-hero-note,
+        .dash-hero-sub {
+          position: relative;
+          z-index: 1;
+          margin-top: 18px;
+          color: #edf7fb;
+          font-size: 1.02rem;
+          font-weight: 700;
+        }
+        .dash-hero-rule {
+          position: relative;
+          z-index: 1;
+          width: 68%;
+          height: 1px;
+          background: rgba(223, 244, 248, 0.25);
+          margin: 32px 0 26px 0;
+        }
+        .dash-hero-secondary-value {
+          position: relative;
+          z-index: 1;
+          margin-top: 14px;
+          font-size: 2.45rem;
+          font-weight: 900;
+          line-height: 1;
+        }
+        .bank-art {
+          position: relative;
+          z-index: 1;
+          height: 260px;
+          display: grid;
+          place-items: end center;
+          opacity: 0.88;
+        }
+        .bank-art .bank {
+          position: relative;
+          width: 250px;
+          height: 170px;
+        }
+        .bank-roof {
+          position: absolute;
+          left: 18px;
+          top: 4px;
+          width: 214px;
+          height: 54px;
+          background: #86dce1;
+          clip-path: polygon(50% 0%, 100% 72%, 95% 100%, 5% 100%, 0% 72%);
+          box-shadow: inset 0 -8px 0 rgba(14, 84, 98, 0.18);
+        }
+        .bank-row {
+          position: absolute;
+          left: 28px;
+          top: 68px;
+          width: 194px;
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 20px;
+        }
+        .bank-col {
+          height: 92px;
+          border-radius: 8px 8px 2px 2px;
+          background: linear-gradient(180deg, #9be8e9, #5dc5cb);
+          box-shadow: inset 7px 0 0 rgba(255,255,255,0.18);
+        }
+        .bank-base {
+          position: absolute;
+          left: 8px;
+          bottom: 0;
+          width: 234px;
+          height: 21px;
+          border-radius: 3px;
+          background: #a8edf0;
+          box-shadow: 0 -13px 0 #73d4d8;
+        }
+        .bank-coin {
+          position: absolute;
+          left: 84px;
+          top: 116px;
+          width: 74px;
+          height: 74px;
+          border-radius: 50%;
+          display: grid;
+          place-items: center;
+          background: #ecffff;
+          color: #0c6671;
+          font-size: 42px;
+          font-weight: 900;
+          box-shadow: 0 0 0 9px rgba(129, 218, 224, 0.74);
+        }
+        .dash-kpi-grid {
+          display: grid;
+          grid-template-columns: repeat(6, minmax(0, 1fr));
+          gap: 28px;
+          margin: 0 0 34px 0;
+        }
+        .dash-kpi-card {
+          min-height: 238px;
+          background: #ffffff;
+          border: 1px solid #e2eaf4;
+          border-top: 4px solid var(--tone);
+          border-radius: 14px;
+          padding: 20px 20px 13px 20px;
+          box-shadow: 0 11px 22px rgba(15,23,42,0.10);
+          overflow: hidden;
+        }
+        .dash-green { --tone: #00a86b; }
+        .dash-red { --tone: #ff2d2d; }
+        .dash-violet { --tone: #8a2be2; }
+        .dash-teal { --tone: #008b78; }
+        .dash-blue { --tone: #0f6bff; }
+        .dash-icon {
+          width: 52px;
+          height: 52px;
+          border-radius: 50%;
+          display: grid;
+          place-items: center;
+          color: var(--tone);
+          background: color-mix(in srgb, var(--tone) 15%, white);
+          font-size: 25px;
+          font-weight: 900;
+          margin-bottom: 14px;
+        }
+        .dash-kpi-title {
+          color: #3d485c;
+          font-size: 0.78rem;
+          font-weight: 900;
+          text-transform: uppercase;
+          line-height: 1.25;
+        }
+        .dash-kpi-value {
+          margin-top: 8px;
+          color: #071326;
+          font-size: clamp(1.55rem, 2vw, 2rem);
+          line-height: 1.05;
+          font-weight: 900;
+        }
+        .dash-kpi-sub {
+          margin-top: 12px;
+          color: var(--tone);
+          font-size: 0.86rem;
+          font-weight: 700;
+          min-height: 21px;
+        }
+        .dash-sparkline {
+          width: 100%;
+          height: 38px;
+          margin-top: 20px;
+        }
+        @media (max-width: 1300px) {
+          .dash-kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+          .dash-hero { grid-template-columns: 1fr 260px; }
+        }
+        @media (max-width: 780px) {
+          .block-container { padding-left: 1.1rem; padding-right: 1.1rem; }
+          [data-testid="stSidebar"] { min-width: 112px !important; max-width: 112px !important; }
+          .top-shell { display: block; }
+          .top-actions { justify-content: flex-start; margin-top: 20px; }
+          .app-subtitle { font-size: 1.35rem; }
+          .dash-hero { grid-template-columns: 1fr; padding: 28px 24px; }
+          .bank-art { display: none; }
+          .dash-kpi-grid { grid-template-columns: 1fr; gap: 16px; }
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    with st.sidebar:
+        st.markdown(
+            """
+            <div class="side-logo">🏢</div>
+            <div class="side-nav">
+              <div class="side-nav-item active"><div class="side-nav-icon">⌂</div><div>General</div></div>
+              <div class="side-nav-item"><div class="side-nav-icon">↗</div><div>Ingresos V2.3</div></div>
+              <div class="side-nav-item"><div class="side-nav-icon">$</div><div>Costos</div></div>
+              <div class="side-nav-item"><div class="side-nav-icon">▤</div><div>Obligaciones</div></div>
+            </div>
+            <div class="side-about"><div style="font-size:24px;">ⓘ</div><div>Acerca de</div></div>
+            """,
+            unsafe_allow_html=True,
+        )
 
     @st.cache_data(show_spinner=False)
     def _load(url_value: str, cache_version: int, expected_cols: Optional[set[str]] = None) -> pd.DataFrame:
@@ -859,34 +1283,30 @@ def run_streamlit():
         )
         return report_pdf
 
+    st.markdown(
+        """
+        <div class="top-shell">
+          <div>
+            <h1 class="app-title">Condominio Los Queltehues III</h1>
+            <div class="app-subtitle">Dashboard</div>
+            <div class="app-source">◴&nbsp;&nbsp;Fuente: Google Sheets (CSV publicado)</div>
+          </div>
+          <div class="top-actions" aria-hidden="true">
+            <span>☼</span><span>☆</span><span>♢</span><span>◉</span><span>⋮</span>
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
     col_title, col_btn = st.columns([0.78, 0.22])
     with col_title:
-        st.title("Condominio Los Queltehues III- Dashboard")
-        st.caption("Fuente: Google Sheets (CSV publicado)")
+        st.empty()
     with col_btn:
-        st.markdown(
-            """
-            <style>
-            div.stDownloadButton > button {
-              background: linear-gradient(135deg, #9AA1A8 0%, #E3E6E9 35%, #B7BCC2 60%, #8C949B 100%);
-              color: #0B1F2A;
-              border: 1px solid #7B8289;
-              box-shadow: inset 0 1px 0 rgba(255,255,255,0.6), 0 2px 6px rgba(15,23,42,0.12);
-              font-weight: 700;
-            }
-            div.stDownloadButton > button:hover {
-              background: linear-gradient(135deg, #8E959C 0%, #D8DDE1 35%, #AEB4BA 60%, #7F8790 100%);
-              border-color: #6E757C;
-            }
-            </style>
-            """,
-            unsafe_allow_html=True,
-        )
-        st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
         try:
             report_pdf = _make_obligaciones_report()
             st.download_button(
-                "Descargar reporte (PDF)",
+                "⇩  Descargar reporte (PDF)",
                 data=report_pdf,
                 file_name="reporte_obligaciones.pdf",
                 mime="application/pdf",
@@ -896,16 +1316,9 @@ def run_streamlit():
         except Exception as e:
             st.error(f"No se pudo generar el reporte. Detalle: {e}")
 
-    with st.sidebar:
-        st.header("Actualización")
-        if st.button("Actualizar información"):
-            st.cache_data.clear()
-
     tab_general, tab_ing, tab_cost, tab_obl = st.tabs(["General", "Ingresos V2.3", "Costos", "Obligaciones"])
 
     with tab_general:
-        st.subheader("Ingresos, Costos y Neto (mensual)")
-
         with st.spinner("Cargando datos generales..."):
             df_ing_g = _load(INGRESOS_CSV_URL, CACHE_VERSION, {"fecha", "parcela", "abono"})
             df_cost_g = _load(COSTOS_CSV_URL, CACHE_VERSION, {"monto", "proveedor", "cc"})
@@ -1043,78 +1456,86 @@ def run_streamlit():
             pendiente_proy = 0.0
             pct_no_pago = 0.0
 
-        st.markdown(
-            """
-            <style>
-            .kpi-hero {background:linear-gradient(135deg,#0F2D3A 0%,#174A5A 100%);border-radius:22px;padding:26px 28px;box-shadow:0 10px 30px rgba(15,23,42,0.16);margin:8px 0 18px 0;color:#F8FAFC;position:relative;overflow:hidden;}
-            .kpi-hero:after {content:"";position:absolute;right:-60px;top:-60px;width:220px;height:220px;border-radius:999px;background:rgba(255,255,255,0.08);}
-            .kpi-hero-title {font-size:13px;letter-spacing:0.12em;font-weight:800;color:#CFE7EE;position:relative;z-index:1;}
-            .kpi-hero-value {font-size:46px;line-height:1.05;font-weight:900;margin-top:10px;position:relative;z-index:1;}
-            .kpi-hero-sub {font-size:14px;color:#D9EAF0;margin-top:8px;position:relative;z-index:1;}
-            .kpi-hero-secondary {margin-top:18px;padding-top:18px;border-top:1px solid rgba(255,255,255,0.18);position:relative;z-index:1;}
-            .kpi-hero-secondary-title {font-size:12px;letter-spacing:0.1em;font-weight:800;color:#CFE7EE;}
-            .kpi-hero-secondary-value {font-size:30px;line-height:1.08;font-weight:900;margin-top:8px;color:#FFFFFF;}
-            .kpi-hero-secondary-sub {font-size:13px;color:#D9EAF0;margin-top:6px;}
-            .kpi-row {display:grid;grid-template-columns:repeat(3, minmax(0,1fr));gap:16px;margin:8px 0 18px 0;align-items:stretch;}
-            .kpi-card {background:linear-gradient(180deg,#FFFFFF 0%,#F8FAFC 100%);border:1px solid #D9E2EC;border-radius:18px;padding:18px 18px 16px 18px;box-shadow:0 6px 18px rgba(15,23,42,0.08);position:relative;min-height:128px;overflow:hidden;}
-            .kpi-card:before {content:"";position:absolute;left:0;top:0;height:100%;width:7px;border-radius:18px 0 0 18px;}
-            .kpi-card:after {content:"";position:absolute;right:-24px;bottom:-24px;width:88px;height:88px;border-radius:999px;background:rgba(148,163,184,0.08);}
-            .kpi-title {font-size:12px;letter-spacing:0.12em;color:#667085;font-weight:800;position:relative;z-index:1;}
-            .kpi-value {font-size:26px;line-height:1.1;font-weight:900;margin-top:18px;color:#101828;position:relative;z-index:1;}
-            .kpi-sub {font-size:12px;color:#98A2B3;margin-top:14px;position:relative;z-index:1;}
-            .kpi-green:before {background:#22C55E;}
-            .kpi-red:before {background:#EF4444;}
-            .kpi-navy:before {background:#0F172A;}
-            .kpi-teal:before {background:#0F766E;}
-            @media (max-width: 1100px){.kpi-row{grid-template-columns:repeat(2, minmax(0,1fr));}.kpi-hero-value{font-size:38px;}}
-            @media (max-width: 700px){.kpi-row{grid-template-columns:1fr;}.kpi-hero{padding:22px 20px;}.kpi-hero-value{font-size:32px;}.kpi-hero-secondary-value{font-size:24px;}}
-            </style>
-            """,
-            unsafe_allow_html=True,
+        kpi_tiles = "".join(
+            [
+                _kpi_tile(
+                    "↗",
+                    "Total ingresos",
+                    f"${total_ing:,.0f}",
+                    "Suma histórica",
+                    "green",
+                    "0,28 20,18 38,21 56,10 76,22 96,4 116,15 136,10 156,21",
+                ),
+                _kpi_tile(
+                    "⊥",
+                    "Total costos",
+                    f"${total_cost:,.0f}",
+                    "Suma histórica",
+                    "red",
+                    "0,20 20,19 38,21 56,8 76,20 96,9 116,18 136,13 156,23",
+                ),
+                _kpi_tile(
+                    "◔",
+                    "Pendiente de pago total",
+                    f"${pendiente_total:,.0f}",
+                    "GC + mantención + proyecto",
+                    "violet",
+                    "0,25 20,13 38,17 56,11 76,18 96,2 116,16 136,9 156,21",
+                ),
+                _kpi_tile(
+                    "●",
+                    "Pendiente a proveedores",
+                    f"${pendiente_proveedores:,.0f}",
+                    "Pestaña Por pagar",
+                    "teal",
+                    "0,20 156,20",
+                ),
+                _kpi_tile(
+                    "%",
+                    "% no pago total",
+                    f"{pct_no_pago:,.1f}%",
+                    "Pendiente / GC total",
+                    "red",
+                    "0,25 20,18 38,21 56,14 76,22 96,7 116,20 136,13 156,23",
+                ),
+                _kpi_tile(
+                    "▣",
+                    "Mejor año",
+                    f"{best_year}",
+                    "Mayor neto",
+                    "blue",
+                    "0,27 20,15 38,19 56,18 76,11 96,18 116,5 136,17 156,10",
+                ),
+            ]
         )
         st.markdown(
             f"""
-            <div class="kpi-hero">
-              <div class="kpi-hero-title">NETO ACUMULADO - BANCO</div>
-              <div class="kpi-hero-value">${total_neto:,.0f}</div>
-              <div class="kpi-hero-sub">Resultado histórico acumulado: ingresos menos costos</div>
-              <div class="kpi-hero-secondary">
-                <div class="kpi-hero-secondary-title">BANCO FUTURO SIN CUENTAS POR PAGAR</div>
-                <div class="kpi-hero-secondary-value">${banco_futuro:,.0f}</div>
-                <div class="kpi-hero-secondary-sub">Neto acumulado menos pendiente a proveedores</div>
+            <div class="dash-hero">
+              <div>
+                <div class="dash-hero-eyebrow">NETO ACUMULADO - BANCO</div>
+                <div class="dash-hero-value">${total_neto:,.0f}</div>
+                <div class="dash-hero-note">↗&nbsp;&nbsp;Resultado histórico acumulado: ingresos menos costos</div>
+                <div class="dash-hero-rule"></div>
+                <div class="dash-hero-label">BANCO FUTURO SIN CUENTAS POR PAGAR</div>
+                <div class="dash-hero-secondary-value">${banco_futuro:,.0f}</div>
+                <div class="dash-hero-sub">⚖&nbsp;&nbsp;Neto acumulado menos pendiente a proveedores</div>
+              </div>
+              <div class="bank-art" aria-hidden="true">
+                <div class="bank">
+                  <div class="bank-roof"></div>
+                  <div class="bank-row">
+                    <div class="bank-col"></div>
+                    <div class="bank-col"></div>
+                    <div class="bank-col"></div>
+                    <div class="bank-col"></div>
+                  </div>
+                  <div class="bank-coin">$</div>
+                  <div class="bank-base"></div>
+                </div>
               </div>
             </div>
-            <div class="kpi-row">
-              <div class="kpi-card kpi-green">
-                <div class="kpi-title">TOTAL INGRESOS</div>
-                <div class="kpi-value">${total_ing:,.0f}</div>
-                <div class="kpi-sub">Suma histórica</div>
-              </div>
-              <div class="kpi-card kpi-red">
-                <div class="kpi-title">TOTAL COSTOS</div>
-                <div class="kpi-value">${total_cost:,.0f}</div>
-                <div class="kpi-sub">Suma histórica</div>
-              </div>
-              <div class="kpi-card kpi-red">
-                <div class="kpi-title">PENDIENTE DE PAGO TOTAL</div>
-                <div class="kpi-value">${pendiente_total:,.0f}</div>
-                <div class="kpi-sub">GC + mantención + proyecto</div>
-              </div>
-              <div class="kpi-card kpi-teal">
-                <div class="kpi-title">PENDIENTE A PROVEEDORES</div>
-                <div class="kpi-value">${pendiente_proveedores:,.0f}</div>
-                <div class="kpi-sub">Pestaña Por pagar</div>
-              </div>
-              <div class="kpi-card kpi-red">
-                <div class="kpi-title">% NO PAGO TOTAL</div>
-                <div class="kpi-value">{pct_no_pago:,.1f}%</div>
-                <div class="kpi-sub">Pendiente / GC total</div>
-              </div>
-              <div class="kpi-card kpi-navy">
-                <div class="kpi-title">MEJOR AÑO</div>
-                <div class="kpi-value">{best_year}</div>
-                <div class="kpi-sub">Mayor neto</div>
-              </div>
+            <div class="dash-kpi-grid">
+              {kpi_tiles}
             </div>
             """,
             unsafe_allow_html=True,
