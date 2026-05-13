@@ -576,7 +576,7 @@ def run_streamlit():
           color: var(--dash-ink);
         }
         .block-container {
-          padding-top: 0.65rem;
+          padding-top: 0.25rem;
           padding-left: 2.75rem;
           padding-right: 2.75rem;
           max-width: 1680px;
@@ -664,12 +664,12 @@ def run_streamlit():
           justify-content: space-between;
           align-items: flex-start;
           gap: 24px;
-          margin-bottom: 22px;
+          margin-bottom: 8px;
         }
         .app-title {
           margin: 0;
           color: var(--dash-ink);
-          font-size: clamp(2.2rem, 4vw, 3.25rem);
+          font-size: clamp(1.85rem, 3vw, 2.65rem);
           line-height: 1;
           letter-spacing: 0;
           font-weight: 900;
@@ -686,7 +686,7 @@ def run_streamlit():
           min-width: 230px;
         }
         div.stDownloadButton > button {
-          min-height: 60px;
+          min-height: 48px;
           border-radius: 8px;
           border: 1px solid #d8e0eb;
           background: #ffffff;
@@ -701,13 +701,13 @@ def run_streamlit():
           color: #0f172a;
         }
         .dash-hero {
-          min-height: 386px;
+          min-height: 270px;
           display: grid;
-          grid-template-columns: minmax(0, 1fr) 360px;
-          gap: 32px;
+          grid-template-columns: minmax(0, 1fr) 300px;
+          gap: 24px;
           align-items: center;
-          margin: 38px 0 36px 0;
-          padding: 38px 42px;
+          margin: 18px 0 20px 0;
+          padding: 26px 34px;
           border-radius: 17px;
           position: relative;
           overflow: hidden;
@@ -722,7 +722,7 @@ def run_streamlit():
           content: "";
           position: absolute;
           inset: auto -6% -18% 16%;
-          height: 150px;
+          height: 105px;
           background: rgba(22, 92, 116, 0.25);
           border-radius: 55% 45% 0 0;
         }
@@ -730,7 +730,7 @@ def run_streamlit():
         .dash-hero-label {
           position: relative;
           z-index: 1;
-          font-size: 0.96rem;
+          font-size: 0.82rem;
           letter-spacing: 0.1em;
           font-weight: 900;
           text-transform: uppercase;
@@ -738,8 +738,8 @@ def run_streamlit():
         .dash-hero-value {
           position: relative;
           z-index: 1;
-          margin-top: 22px;
-          font-size: clamp(3.1rem, 5.2vw, 4.85rem);
+          margin-top: 14px;
+          font-size: clamp(2.45rem, 4vw, 3.4rem);
           line-height: 0.98;
           font-weight: 900;
           text-shadow: 0 3px 0 rgba(255, 255, 255, 0.12), 0 7px 18px rgba(0, 0, 0, 0.25);
@@ -748,9 +748,9 @@ def run_streamlit():
         .dash-hero-sub {
           position: relative;
           z-index: 1;
-          margin-top: 18px;
+          margin-top: 12px;
           color: #edf7fb;
-          font-size: 1.02rem;
+          font-size: 0.9rem;
           font-weight: 700;
         }
         .dash-hero-rule {
@@ -759,92 +759,92 @@ def run_streamlit():
           width: 68%;
           height: 1px;
           background: rgba(223, 244, 248, 0.25);
-          margin: 32px 0 26px 0;
+          margin: 20px 0 16px 0;
         }
         .dash-hero-secondary-value {
           position: relative;
           z-index: 1;
-          margin-top: 14px;
-          font-size: 2.45rem;
+          margin-top: 9px;
+          font-size: 1.85rem;
           font-weight: 900;
           line-height: 1;
         }
         .bank-art {
           position: relative;
           z-index: 1;
-          height: 260px;
+          height: 182px;
           display: grid;
           place-items: end center;
           opacity: 0.88;
         }
         .bank-art .bank {
           position: relative;
-          width: 250px;
-          height: 170px;
+          width: 175px;
+          height: 119px;
         }
         .bank-roof {
           position: absolute;
-          left: 18px;
-          top: 4px;
-          width: 214px;
-          height: 54px;
+          left: 13px;
+          top: 3px;
+          width: 150px;
+          height: 38px;
           background: #86dce1;
           clip-path: polygon(50% 0%, 100% 72%, 95% 100%, 5% 100%, 0% 72%);
-          box-shadow: inset 0 -8px 0 rgba(14, 84, 98, 0.18);
+          box-shadow: inset 0 -6px 0 rgba(14, 84, 98, 0.18);
         }
         .bank-row {
           position: absolute;
-          left: 28px;
-          top: 68px;
-          width: 194px;
+          left: 20px;
+          top: 48px;
+          width: 136px;
           display: grid;
           grid-template-columns: repeat(4, 1fr);
-          gap: 20px;
+          gap: 14px;
         }
         .bank-col {
-          height: 92px;
+          height: 64px;
           border-radius: 8px 8px 2px 2px;
           background: linear-gradient(180deg, #9be8e9, #5dc5cb);
           box-shadow: inset 7px 0 0 rgba(255,255,255,0.18);
         }
         .bank-base {
           position: absolute;
-          left: 8px;
+          left: 6px;
           bottom: 0;
-          width: 234px;
-          height: 21px;
+          width: 164px;
+          height: 15px;
           border-radius: 3px;
           background: #a8edf0;
-          box-shadow: 0 -13px 0 #73d4d8;
+          box-shadow: 0 -9px 0 #73d4d8;
         }
         .bank-coin {
           position: absolute;
-          left: 84px;
-          top: 116px;
-          width: 74px;
-          height: 74px;
+          left: 59px;
+          top: 81px;
+          width: 52px;
+          height: 52px;
           border-radius: 50%;
           display: grid;
           place-items: center;
           background: #ecffff;
           color: #0c6671;
-          font-size: 42px;
+          font-size: 29px;
           font-weight: 900;
-          box-shadow: 0 0 0 9px rgba(129, 218, 224, 0.74);
+          box-shadow: 0 0 0 6px rgba(129, 218, 224, 0.74);
         }
         .dash-kpi-grid {
           display: grid;
           grid-template-columns: repeat(6, minmax(0, 1fr));
-          gap: 28px;
-          margin: 0 0 34px 0;
+          gap: 18px;
+          margin: 0 0 20px 0;
         }
         .dash-kpi-card {
-          min-height: 238px;
+          min-height: 166px;
           background: #ffffff;
           border: 1px solid #e2eaf4;
           border-top: 4px solid var(--tone);
           border-radius: 14px;
-          padding: 20px 20px 13px 20px;
+          padding: 14px 16px 10px 16px;
           box-shadow: 0 11px 22px rgba(15,23,42,0.10);
           overflow: hidden;
         }
@@ -854,53 +854,53 @@ def run_streamlit():
         .dash-teal { --tone: #008b78; }
         .dash-blue { --tone: #0f6bff; }
         .dash-icon {
-          width: 52px;
-          height: 52px;
+          height: 42px;
+          width: 42px;
           border-radius: 50%;
           display: grid;
           place-items: center;
           color: var(--tone);
           background: color-mix(in srgb, var(--tone) 15%, white);
-          font-size: 25px;
+          font-size: 20px;
           font-weight: 900;
-          margin-bottom: 14px;
+          margin-bottom: 9px;
         }
         .dash-kpi-title {
           color: #3d485c;
-          font-size: 0.78rem;
+          font-size: 0.7rem;
           font-weight: 900;
           text-transform: uppercase;
           line-height: 1.25;
         }
         .dash-kpi-value {
-          margin-top: 8px;
+          margin-top: 6px;
           color: #071326;
-          font-size: clamp(1.55rem, 2vw, 2rem);
+          font-size: clamp(1.25rem, 1.55vw, 1.52rem);
           line-height: 1.05;
           font-weight: 900;
         }
         .dash-kpi-sub {
-          margin-top: 12px;
+          margin-top: 8px;
           color: var(--tone);
-          font-size: 0.86rem;
+          font-size: 0.72rem;
           font-weight: 700;
-          min-height: 21px;
+          min-height: 16px;
         }
         .dash-sparkline {
           width: 100%;
-          height: 38px;
-          margin-top: 20px;
+          height: 26px;
+          margin-top: 8px;
         }
         @media (max-width: 1300px) {
           .dash-kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-          .dash-hero { grid-template-columns: 1fr 260px; }
+          .dash-hero { grid-template-columns: 1fr 210px; }
         }
         @media (max-width: 780px) {
           .block-container { padding-left: 1.1rem; padding-right: 1.1rem; }
           [data-testid="stSidebar"] { min-width: 112px !important; max-width: 112px !important; }
           .top-shell { display: block; }
           .top-actions { justify-content: flex-start; margin-top: 20px; }
-          .dash-hero { grid-template-columns: 1fr; padding: 28px 24px; }
+          .dash-hero { grid-template-columns: 1fr; padding: 20px 22px; }
           .bank-art { display: none; }
           .dash-kpi-grid { grid-template-columns: 1fr; gap: 16px; }
         }
