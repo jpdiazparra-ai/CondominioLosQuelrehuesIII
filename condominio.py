@@ -2450,27 +2450,27 @@ def run_streamlit():
                 .obl-kpi-grid {
                   display:grid;
                   grid-template-columns:repeat(5,minmax(0,1fr));
-                  gap:16px;
-                  margin:0 0 24px 0;
+                  gap:14px;
+                  margin:0 0 20px 0;
                 }
                 .obl-kpi-card {
-                  min-height:104px;
+                  min-height:88px;
                   background:#fff;
                   border:1px solid #e2e8f0;
                   border-radius:10px;
                   box-shadow:0 8px 18px rgba(15,23,42,.07);
-                  padding:18px 22px;
+                  padding:15px 19px;
                   display:grid;
-                  grid-template-columns:minmax(0,1fr) 54px;
-                  gap:12px;
+                  grid-template-columns:minmax(0,1fr) 46px;
+                  gap:10px;
                   align-items:center;
                 }
                 .obl-kpi-label { color:#667085; font-size:14px; font-weight:700; }
                 .obl-kpi-value { color:#071326; font-size:24px; line-height:1.1; font-weight:900; margin-top:8px; }
                 .obl-kpi-sub { font-size:12px; font-weight:900; margin-top:10px; }
                 .obl-kpi-icon {
-                  width:54px;
-                  height:54px;
+                  width:46px;
+                  height:46px;
                   border-radius:50%;
                   display:grid;
                   place-items:center;
@@ -2493,7 +2493,7 @@ def run_streamlit():
                   border-radius:10px;
                   box-shadow:0 10px 24px rgba(15,23,42,.07);
                   overflow:hidden;
-                  margin:8px 0 28px 0;
+                  margin:7px 0 24px 0;
                 }
                 .obl-table {
                   width:100%;
@@ -2503,19 +2503,19 @@ def run_streamlit():
                   font-size:13px;
                 }
                 .obl-table th {
-                  height:42px;
+                  height:36px;
                   background:#f7f9fc;
                   color:#162339;
                   font-weight:900;
                   text-align:left;
-                  padding:0 14px;
+                  padding:0 12px;
                   border-bottom:1px solid #e2e8f0;
                   border-right:1px solid #e6edf5;
                   white-space:nowrap;
                 }
                 .obl-table td {
-                  height:36px;
-                  padding:0 14px;
+                  height:31px;
+                  padding:0 12px;
                   border-bottom:1px solid #eef2f7;
                   border-right:1px solid #eef2f7;
                   font-weight:800;
@@ -2528,8 +2528,8 @@ def run_streamlit():
                 .parcel-pill {
                   display:inline-grid;
                   place-items:center;
-                  min-width:30px;
-                  height:22px;
+                  min-width:26px;
+                  height:19px;
                   border-radius:999px;
                   background:#eef3f8;
                   color:#34445b;
@@ -2538,13 +2538,13 @@ def run_streamlit():
                 .owner-cell {
                   display:flex;
                   align-items:center;
-                  gap:10px;
+                  gap:9px;
                   color:#172033;
                   font-weight:900;
                 }
                 .owner-icon {
-                  width:18px;
-                  height:18px;
+                  width:15px;
+                  height:15px;
                   border-radius:50%;
                   display:grid;
                   place-items:center;
@@ -2559,8 +2559,8 @@ def run_streamlit():
                 .total-pill {
                   display:inline-grid;
                   place-items:center;
-                  min-width:92px;
-                  height:24px;
+                  min-width:78px;
+                  height:20px;
                   border-radius:7px;
                   background:linear-gradient(180deg,#e95858 0%,#cf3e3e 100%);
                   color:#fff;
@@ -2576,8 +2576,8 @@ def run_streamlit():
                   display:flex;
                   justify-content:space-between;
                   align-items:center;
-                  min-height:68px;
-                  padding:0 22px;
+                  min-height:58px;
+                  padding:0 19px;
                   color:#58667d;
                   font-size:13px;
                   font-weight:700;
@@ -2588,8 +2588,8 @@ def run_streamlit():
                   border:1px solid #dfe7f1;
                   background:#fff;
                   border-radius:8px;
-                  min-height:36px;
-                  padding:0 14px;
+                  min-height:31px;
+                  padding:0 12px;
                   display:flex;
                   align-items:center;
                   gap:12px;
