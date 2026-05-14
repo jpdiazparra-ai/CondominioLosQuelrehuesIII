@@ -3464,8 +3464,12 @@ def run_streamlit():
                       padding:0 9px;
                       border-bottom:1px solid #eef2f7;
                       border-right:1px solid #eef2f7;
-                      font-weight:800;
+                      font-weight:500;
                       white-space:nowrap;
+                    }
+                    .gc-table td:nth-child(1),
+                    .gc-table td:nth-child(2) {
+                      font-weight:900;
                     }
                     .gc-table tr:hover td { background:#f8fbff; }
                     .gc-num { text-align:right; }
