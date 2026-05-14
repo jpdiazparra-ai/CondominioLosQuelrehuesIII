@@ -3709,7 +3709,7 @@ def run_streamlit():
                         return str(v)
 
                 tabla_prop_sorted = tabla_prop.sort_values("Parcela")
-                tabla_prop_page = tabla_prop_sorted.head(12)
+                tabla_prop_page = tabla_prop_sorted
                 table_rows = []
                 for _, row in tabla_prop_page.iterrows():
                     pendiente = float(row.get("Pendiente", 0) or 0)
@@ -3736,8 +3736,8 @@ def run_streamlit():
                     f"<tbody>{''.join(table_rows)}</tbody>"
                     "</table>"
                     "<div class=\"gc-footer\">"
-                    f"<div>Mostrando 1 a {len(tabla_prop_page):,} de {len(tabla_prop):,} parcelas</div>"
-                    "<div class=\"gc-page-controls\"><span class=\"gc-page\">‹ Anterior</span><span class=\"gc-page active\">1</span><span class=\"gc-page\">2</span><span class=\"gc-page\">Siguiente ›</span></div>"
+                    f"<div>Mostrando 1 a {len(tabla_prop_page):,} de {len(tabla_prop):,} registros</div>"
+                    "<div class=\"gc-page-controls\"><span>Filas por página</span><span class=\"gc-select\">20⌄</span><span class=\"gc-page\">‹ Anterior</span><span class=\"gc-page active\">1</span><span class=\"gc-page\">Siguiente ›</span></div>"
                     "</div>"
                     "</div>"
                 )
