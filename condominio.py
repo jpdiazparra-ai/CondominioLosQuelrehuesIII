@@ -2420,57 +2420,185 @@ def run_streamlit():
             st.markdown(
                 """
                 <style>
-                .kpi-grid {display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin:8px 0 18px 0;}
-                .kpi-card {background:#fff;border:1px solid #E2E8F0;border-radius:16px;padding:18px 20px;box-shadow:0 2px 12px rgba(15,23,42,0.06);position:relative;}
-                .kpi-card:before {content:"";position:absolute;left:0;top:0;height:100%;width:6px;border-radius:16px 0 0 16px;}
-                .kpi-title {font-size:11px;letter-spacing:0.08em;color:#6B7280;font-weight:700;}
-                .kpi-value {font-size:22px;font-weight:800;margin-top:6px;}
-                .kpi-sub {font-size:12px;color:#94A3B8;margin-top:6px;}
-                .kpi-green:before {background:#22C55E;}
-                .kpi-red:before {background:#EF4444;}
-                .kpi-navy:before {background:#0B1F2A;}
-                .kpi-teal:before {background:#2C5B4A;}
-                @media (max-width: 1100px){.kpi-grid{grid-template-columns:repeat(2,1fr);}}
-                @media (max-width: 700px){.kpi-grid{grid-template-columns:1fr;}}
+                .obl-actions {
+                  display:flex;
+                  justify-content:flex-end;
+                  align-items:center;
+                  gap:12px;
+                  margin:2px 0 18px 0;
+                }
+                .obl-search,
+                .obl-filter,
+                .obl-more {
+                  height:44px;
+                  border:1px solid #dfe7f1;
+                  border-radius:8px;
+                  background:#fff;
+                  box-shadow:0 4px 12px rgba(15,23,42,.04);
+                  color:#667085;
+                  display:flex;
+                  align-items:center;
+                  gap:10px;
+                  font-weight:700;
+                }
+                .obl-search { min-width:300px; padding:0 18px; justify-content:flex-start; }
+                .obl-filter { min-width:128px; padding:0 18px; justify-content:center; color:#263449; }
+                .obl-more { width:44px; justify-content:center; font-size:24px; border-color:transparent; box-shadow:none; }
+                .obl-kpi-grid {
+                  display:grid;
+                  grid-template-columns:repeat(5,minmax(0,1fr));
+                  gap:16px;
+                  margin:0 0 24px 0;
+                }
+                .obl-kpi-card {
+                  min-height:104px;
+                  background:#fff;
+                  border:1px solid #e2e8f0;
+                  border-radius:10px;
+                  box-shadow:0 8px 18px rgba(15,23,42,.07);
+                  padding:18px 22px;
+                  display:grid;
+                  grid-template-columns:minmax(0,1fr) 54px;
+                  gap:12px;
+                  align-items:center;
+                }
+                .obl-kpi-label { color:#667085; font-size:14px; font-weight:700; }
+                .obl-kpi-value { color:#071326; font-size:24px; line-height:1.1; font-weight:900; margin-top:8px; }
+                .obl-kpi-sub { font-size:12px; font-weight:900; margin-top:10px; }
+                .obl-kpi-icon {
+                  width:54px;
+                  height:54px;
+                  border-radius:50%;
+                  display:grid;
+                  place-items:center;
+                  font-size:25px;
+                  font-weight:900;
+                }
+                .obl-red { color:#e23939; }
+                .obl-purple { color:#8a3ffc; }
+                .obl-green { color:#18a957; }
+                .obl-orange { color:#d96a00; }
+                .obl-blue { color:#0f6bff; }
+                .obl-bg-red { background:#ffe2e3; color:#e23939; }
+                .obl-bg-purple { background:#eadcff; color:#8a3ffc; }
+                .obl-bg-green { background:#dff7e8; color:#18a957; }
+                .obl-bg-orange { background:#fff0df; color:#d96a00; }
+                .obl-bg-blue { background:#e4efff; color:#0f6bff; }
+                .obl-table-card {
+                  background:#fff;
+                  border:1px solid #e1e8f1;
+                  border-radius:10px;
+                  box-shadow:0 10px 24px rgba(15,23,42,.07);
+                  overflow:hidden;
+                  margin:8px 0 28px 0;
+                }
+                .obl-table {
+                  width:100%;
+                  border-collapse:separate;
+                  border-spacing:0;
+                  color:#263449;
+                  font-size:13px;
+                }
+                .obl-table th {
+                  height:42px;
+                  background:#f7f9fc;
+                  color:#162339;
+                  font-weight:900;
+                  text-align:left;
+                  padding:0 14px;
+                  border-bottom:1px solid #e2e8f0;
+                  border-right:1px solid #e6edf5;
+                  white-space:nowrap;
+                }
+                .obl-table td {
+                  height:36px;
+                  padding:0 14px;
+                  border-bottom:1px solid #eef2f7;
+                  border-right:1px solid #eef2f7;
+                  font-weight:800;
+                  white-space:nowrap;
+                }
+                .obl-table tr.debt-row td { background:rgba(226,57,57,.055); }
+                .obl-table tr:hover td { background:#f8fbff; }
+                .obl-num { text-align:right; }
+                .obl-center { text-align:center; }
+                .parcel-pill {
+                  display:inline-grid;
+                  place-items:center;
+                  min-width:30px;
+                  height:22px;
+                  border-radius:999px;
+                  background:#eef3f8;
+                  color:#34445b;
+                  font-weight:900;
+                }
+                .owner-cell {
+                  display:flex;
+                  align-items:center;
+                  gap:10px;
+                  color:#172033;
+                  font-weight:900;
+                }
+                .owner-icon {
+                  width:18px;
+                  height:18px;
+                  border-radius:50%;
+                  display:grid;
+                  place-items:center;
+                  background:#e8f1ff;
+                  color:#0f6bff;
+                  font-size:11px;
+                }
+                .amount-red { color:#df3333; }
+                .amount-green { color:#1ca55b; }
+                .amount-orange { color:#d96a00; }
+                .amount-blue { color:#0f6bff; }
+                .total-pill {
+                  display:inline-grid;
+                  place-items:center;
+                  min-width:92px;
+                  height:24px;
+                  border-radius:7px;
+                  background:linear-gradient(180deg,#e95858 0%,#cf3e3e 100%);
+                  color:#fff;
+                  font-weight:900;
+                  box-shadow:inset 0 1px 0 rgba(255,255,255,.22);
+                }
+                .total-pill.zero {
+                  color:#263449;
+                  background:#edf1f5;
+                  box-shadow:none;
+                }
+                .obl-footer {
+                  display:flex;
+                  justify-content:space-between;
+                  align-items:center;
+                  min-height:68px;
+                  padding:0 22px;
+                  color:#58667d;
+                  font-size:13px;
+                  font-weight:700;
+                }
+                .obl-page-controls { display:flex; align-items:center; gap:10px; }
+                .rows-select,
+                .page-btn {
+                  border:1px solid #dfe7f1;
+                  background:#fff;
+                  border-radius:8px;
+                  min-height:36px;
+                  padding:0 14px;
+                  display:flex;
+                  align-items:center;
+                  gap:12px;
+                }
+                .page-btn.active {
+                  background:#0f6bff;
+                  color:#fff;
+                  border-color:#0f6bff;
+                }
+                @media(max-width:1200px){.obl-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.obl-table-card{overflow-x:auto;}}
+                @media(max-width:700px){.obl-actions{justify-content:flex-start;flex-wrap:wrap;}.obl-kpi-grid{grid-template-columns:1fr;}.obl-search{min-width:100%;}}
                 </style>
-                """,
-                unsafe_allow_html=True,
-            )
-
-            st.markdown(
-                f"""
-                <div class="kpi-grid">
-                  <div class="kpi-card kpi-navy">
-                    <div class="kpi-title">OBLIGACIÓN POR PARCELA</div>
-                    <div class="kpi-value">${gc_total_parcela:,.0f}</div>
-                    <div class="kpi-sub">Total GC acumulado</div>
-                  </div>
-                  <div class="kpi-card kpi-teal">
-                    <div class="kpi-title">PENDIENTE A PROVEEDORES</div>
-                    <div class="kpi-value">${pendiente_proveedores:,.0f}</div>
-                    <div class="kpi-sub">Pestaña Por pagar</div>
-                  </div>
-                  <div class="kpi-card kpi-red">
-                    <div class="kpi-title">PENDIENTE GC</div>
-                    <div class="kpi-value">${total_pendiente:,.0f}</div>
-                    <div class="kpi-sub">Solo montos positivos</div>
-                  </div>
-                  <div class="kpi-card kpi-red">
-                    <div class="kpi-title">PENDIENTE MANTENCIÓN</div>
-                    <div class="kpi-value">${pendiente_mant:,.0f}</div>
-                    <div class="kpi-sub">Mantención por parcela</div>
-                  </div>
-                  <div class="kpi-card kpi-red">
-                    <div class="kpi-title">PENDIENTE PROYECTO</div>
-                    <div class="kpi-value">${pendiente_proy:,.0f}</div>
-                    <div class="kpi-sub">Suma CC proyectos</div>
-                  </div>
-                  <div class="kpi-card kpi-teal">
-                    <div class="kpi-title">GC POR ANTICIPADO</div>
-                    <div class="kpi-value">${total_favor:,.0f}</div>
-                    <div class="kpi-sub">Pagos sobre obligación</div>
-                  </div>
-                </div>
                 """,
                 unsafe_allow_html=True,
             )
@@ -2680,41 +2808,112 @@ def run_streamlit():
             cols_rest = [c for c in tabla_show.columns if c not in cols_front]
             tabla_show = tabla_show[cols_front + cols_rest]
 
-            def _style_obl(s: pd.Series):
-                if s.name == "Total por pagar":
-                    return ["background-color: #5A2A2A; color: #FFFFFF; font-weight:700;" if v > 0 else "" for v in s]
-                return [""] * len(s)
+            def _fmt_money(v) -> str:
+                try:
+                    return f"${float(v):,.0f}"
+                except Exception:
+                    return "$0"
 
-            def _style_row_total(row: pd.Series):
-                if row.get("Total por pagar", 0) > 0:
-                    return ["background-color: #F4DCDC;" for _ in row]
-                return ["" for _ in row]
+            total_por_pagar_all = float(tabla_show["Total por pagar"].fillna(0).sum()) if "Total por pagar" in tabla_show.columns else 0.0
+            total_por_pagar_count = int((tabla_show["Total por pagar"].fillna(0) > 0).sum()) if "Total por pagar" in tabla_show.columns else 0
+            gc_total_all = float(tabla_show["GC total"].fillna(0).sum()) if "GC total" in tabla_show.columns else 0.0
+            gc_avg = float(tabla_show["GC total"].fillna(0).mean()) if "GC total" in tabla_show.columns and not tabla_show.empty else 0.0
+            gc_anticipado_count = int((tabla_show["GC por anticipado"].fillna(0) > 0).sum()) if "GC por anticipado" in tabla_show.columns else 0
+            mant_count = int((tabla_show["Pendiente mantención"].fillna(0) > 0).sum()) if "Pendiente mantención" in tabla_show.columns else 0
+            proyecto_count = int((tabla_show["Pendiente Proyecto"].fillna(0) > 0).sum()) if "Pendiente Proyecto" in tabla_show.columns else int((pendiente_proy > 0))
 
-            def _style_total_col(s: pd.Series):
-                if s.name == "Total por pagar":
-                    return ["background-color: #5A2A2A; color: #FFFFFF; font-weight:700;" if v > 0 else "" for v in s]
-                return [""] * len(s)
-
-            styler = (
-                tabla_show.style
-                .format({col: "${:,.0f}" for col in ["Pagado", "GC total", "Pendiente GC", "GC por anticipado", "Pendiente mantención", "Total por pagar"] + extra_cc_cols})
-                .apply(_style_obl)
-                .apply(_style_row_total, axis=1)
-                .apply(_style_total_col, axis=0)
-                .set_properties(subset=["Parcela"], **{"text-align": "center"})
-                .set_properties(subset=["Propietario"], **{"text-align": "left"})
-                .set_properties(subset=[c for c in tabla_show.columns if c not in ("Parcela", "Propietario")], **{"text-align": "right"})
-                .set_table_styles(
-                    [
-                        {"selector": "th", "props": "background:#0B1F2A;color:#F8FAFC;font-weight:700;font-size:12px;padding:6px 8px;"},
-                        {"selector": "td", "props": "border-color:#E2E8F0;font-size:12px;padding:6px 8px;"},
-                        {"selector": "tr:nth-child(even) td", "props": "background:#EAF0F5;"},
-                        {"selector": "tr:hover td", "props": "background:#DCE7F0;"},
-                        {"selector": "table", "props": "border-radius:10px;overflow:hidden;"},
-                    ]
-                )
+            st.markdown(
+                f"""
+                <div class="obl-actions">
+                  <div class="obl-search">⌕ <span>Buscar por propietario o parcela...</span></div>
+                  <div class="obl-filter">≡ <span>Filtros</span></div>
+                  <div class="obl-more">⋮</div>
+                </div>
+                <div class="obl-kpi-grid">
+                  <div class="obl-kpi-card">
+                    <div><div class="obl-kpi-label">Total por pagar</div><div class="obl-kpi-value">{_fmt_money(total_por_pagar_all)}</div><div class="obl-kpi-sub obl-red">{total_por_pagar_count} pendientes</div></div>
+                    <div class="obl-kpi-icon obl-bg-red">▣</div>
+                  </div>
+                  <div class="obl-kpi-card">
+                    <div><div class="obl-kpi-label">GC total</div><div class="obl-kpi-value">{_fmt_money(gc_total_all)}</div><div class="obl-kpi-sub">Promedio: {_fmt_money(gc_avg)}</div></div>
+                    <div class="obl-kpi-icon obl-bg-purple">▤</div>
+                  </div>
+                  <div class="obl-kpi-card">
+                    <div><div class="obl-kpi-label">GC por anticipado</div><div class="obl-kpi-value">{_fmt_money(total_favor)}</div><div class="obl-kpi-sub obl-green">{gc_anticipado_count} registros</div></div>
+                    <div class="obl-kpi-icon obl-bg-green">▣</div>
+                  </div>
+                  <div class="obl-kpi-card">
+                    <div><div class="obl-kpi-label">Pendiente mantención</div><div class="obl-kpi-value">{_fmt_money(pendiente_mant)}</div><div class="obl-kpi-sub obl-orange">{mant_count} registros</div></div>
+                    <div class="obl-kpi-icon obl-bg-orange">⌘</div>
+                  </div>
+                  <div class="obl-kpi-card">
+                    <div><div class="obl-kpi-label">Pendiente Proyecto</div><div class="obl-kpi-value">{_fmt_money(pendiente_proy)}</div><div class="obl-kpi-sub obl-blue">{proyecto_count} registros</div></div>
+                    <div class="obl-kpi-icon obl-bg-blue">▥</div>
+                  </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
             )
-            st.dataframe(styler, use_container_width=True, height=800, hide_index=True)
+
+            display_cols = [
+                "Parcela",
+                "Propietario",
+                "Pagado",
+                "GC total",
+                "Pendiente GC",
+                "GC por anticipado",
+                "Pendiente mantención",
+                "Pendiente Proyecto",
+                "Total por pagar",
+            ]
+            for col in display_cols:
+                if col not in tabla_show.columns:
+                    tabla_show[col] = 0 if col != "Propietario" else ""
+
+            header_html = "".join(
+                f"<th class=\"{'obl-num' if col not in ('Parcela', 'Propietario') else ''}\">{html.escape(col)} <span style=\"color:#8a96aa; font-weight:800;\">↕</span></th>"
+                for col in display_cols
+            )
+            row_html = []
+            for _, row in tabla_show[display_cols].iterrows():
+                total_row = float(row.get("Total por pagar", 0) or 0)
+                tr_class = " class=\"debt-row\"" if total_row > 0 else ""
+                parcela = int(row["Parcela"]) if pd.notna(row["Parcela"]) else ""
+                propietario = html.escape(str(row.get("Propietario", "") or ""))
+
+                def amount_cell(col: str, css_class: str = "") -> str:
+                    value = float(row.get(col, 0) or 0)
+                    value_class = f" {css_class}" if value > 0 and css_class else ""
+                    return f"<td class=\"obl-num{value_class}\">{_fmt_money(value)}</td>"
+
+                total_class = "" if total_row > 0 else " zero"
+                row_html.append(
+                    f"<tr{tr_class}>"
+                    f"<td class=\"obl-center\"><span class=\"parcel-pill\">{parcela}</span></td>"
+                    f"<td><div class=\"owner-cell\"><span class=\"owner-icon\">♙</span>{propietario}</div></td>"
+                    f"{amount_cell('Pagado')}"
+                    f"{amount_cell('GC total')}"
+                    f"{amount_cell('Pendiente GC', 'amount-red')}"
+                    f"{amount_cell('GC por anticipado', 'amount-green')}"
+                    f"{amount_cell('Pendiente mantención', 'amount-orange')}"
+                    f"{amount_cell('Pendiente Proyecto', 'amount-blue')}"
+                    f"<td class=\"obl-num\"><span class=\"total-pill{total_class}\">{_fmt_money(total_row)}</span></td>"
+                    "</tr>"
+                )
+
+            table_html = (
+                "<div class=\"obl-table-card\">"
+                "<table class=\"obl-table\">"
+                f"<thead><tr>{header_html}</tr></thead>"
+                f"<tbody>{''.join(row_html)}</tbody>"
+                "</table>"
+                "<div class=\"obl-footer\">"
+                f"<div>Mostrando 1 a {len(tabla_show):,} de {len(tabla_show):,} registros</div>"
+                "<div class=\"obl-page-controls\"><span>Filas por página</span><span class=\"rows-select\">20⌄</span><span class=\"page-btn\">‹ Anterior</span><span class=\"page-btn active\">1</span><span class=\"page-btn\">2</span><span class=\"page-btn\">Siguiente ›</span></div>"
+                "</div>"
+                "</div>"
+            )
+            st.markdown(table_html, unsafe_allow_html=True)
 
             pie_gc = tabla_show[tabla_show["Pendiente GC"] > 0][["Parcela", "Pendiente GC"]].copy()
             pie_mant = tabla_show[tabla_show["Pendiente mantención"] > 0][["Parcela", "Pendiente mantención"]].copy()
