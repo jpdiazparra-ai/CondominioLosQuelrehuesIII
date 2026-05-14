@@ -3279,7 +3279,7 @@ def run_streamlit():
                   border-collapse:separate;
                   border-spacing:0;
                   color:#172033;
-                  font-size:10.5px;
+                  font-size:11.6px;
                 }
                 .gc-table th {
                   height:29px;
