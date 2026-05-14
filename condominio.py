@@ -3162,11 +3162,11 @@ def run_streamlit():
                   justify-content:space-between;
                   align-items:flex-start;
                   gap:8px;
-                  margin-bottom:6px;
+                  margin-bottom:5px;
                 }
                 .dist-title {
                   color:#172033;
-                  font-size:15px;
+                  font-size:14px;
                   line-height:1.2;
                   font-weight:900;
                   margin:0;
@@ -3176,8 +3176,8 @@ def run_streamlit():
                   gap:5px;
                 }
                 .dist-action {
-                  width:25px;
-                  height:25px;
+                  width:23px;
+                  height:23px;
                   border:1px solid #dfe7f1;
                   border-radius:7px;
                   display:grid;
@@ -3191,64 +3191,77 @@ def run_streamlit():
                   width:39%;
                   height:1px;
                   background:#dfe6ef;
-                  margin:7px 0 12px 0;
+                  margin:6px 0 10px 0;
                 }
                 .dist-summary {
                   display:flex;
                   align-items:center;
-                  gap:12px;
-                  margin-bottom:8px;
+                  gap:10px;
+                  margin-bottom:6px;
                 }
                 .dist-icon {
-                  width:46px;
-                  height:46px;
+                  width:42px;
+                  height:42px;
                   border-radius:11px;
                   display:grid;
                   place-items:center;
-                  font-size:21px;
+                  font-size:18px;
                   font-weight:900;
                 }
                 .dist-label {
                   color:#68738a;
-                  font-size:10px;
+                  font-size:9px;
                   font-weight:700;
                 }
                 .dist-value {
                   color:#172033;
-                  font-size:16px;
+                  font-size:15px;
                   font-weight:900;
                   margin-top:2px;
                 }
                 .dist-count {
-                  font-size:10px;
+                  font-size:9px;
                   font-weight:900;
-                  margin-top:5px;
+                  margin-top:4px;
                 }
                 .dist-table {
                   width:100%;
                   border-collapse:collapse;
-                  margin-top:2px;
+                  margin-top:0;
                   color:#172033;
-                  font-size:10px;
+                  font-size:9px;
                 }
                 .dist-table th {
                   color:#667085;
                   font-weight:700;
                   text-align:left;
-                  padding:6px 0;
+                  padding:4px 0;
                   border-bottom:1px solid #dfe6ef;
                 }
                 .dist-table td {
-                  padding:5px 0;
+                  padding:4px 0;
                   border-bottom:1px solid #e5ebf3;
                   font-weight:800;
                 }
+                .dist-table-grid {
+                  display:grid;
+                  grid-template-columns:repeat(3,minmax(0,1fr));
+                  column-gap:10px;
+                  margin-top:0;
+                }
+                .dist-table-grid .dist-table {
+                  table-layout:fixed;
+                }
+                .dist-table-grid .dist-table th,
+                .dist-table-grid .dist-table td {
+                  white-space:nowrap;
+                }
                 .dist-dot {
-                  width:9px;
-                  height:9px;
+                  width:8px;
+                  height:8px;
                   display:inline-block;
                   border-radius:50%;
-                  margin-right:8px;
+                  margin-right:6px;
                   vertical-align:middle;
                 }
                 .dist-footer {
@@ -3257,8 +3270,15 @@ def run_streamlit():
                   align-items:center;
                   color:#0f6bff;
                   font-weight:900;
-                  font-size:11px;
-                  margin-top:16px;
+                  font-size:10px;
+                  margin-top:12px;
+                }
+                div[data-testid="stHorizontalBlock"] > div[data-testid="column"] [data-testid="stVerticalBlockBorderWrapper"] {
+                  border-radius:10px;
+                  box-shadow:0 8px 22px rgba(15,23,42,.07);
+                }
+                div[data-testid="stHorizontalBlock"] > div[data-testid="column"] [data-testid="stVerticalBlockBorderWrapper"] > div {
+                  padding:13px 14px 12px 14px;
                 }
                 </style>
                 """,
@@ -3330,7 +3350,7 @@ def run_streamlit():
                         ]
                     )
                     fig.update_layout(
-                        height=245,
+                        height=214,
                         showlegend=False,
                         margin=dict(l=0, r=0, t=2, b=2),
                         paper_bgcolor="#ffffff",
@@ -3341,36 +3361,50 @@ def run_streamlit():
                                 showarrow=False,
                                 x=0.5,
                                 y=0.5,
-                                font=dict(size=10, color="#667085", family="Inter, Arial, sans-serif"),
+                                font=dict(size=9, color="#667085", family="Inter, Arial, sans-serif"),
                             )
                         ],
                     )
                     st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
 
-                    rows = []
+                    row_parts = []
                     for i, (_, r) in enumerate(plot_df.iterrows()):
                         pct = float(r["pct"])
-                        rows.append(
+                        row_parts.append(
                             "<tr>"
                             f"<td><span class=\"dist-dot\" style=\"background:{color_seq[i]};\"></span>{html.escape(str(r['Parcela']))}</td>"
                             f"<td style=\"text-align:right;\">{_fmt_money_card(float(r[value_col]))}</td>"
                             f"<td style=\"text-align:right;\">{pct:.1f}%</td>"
                             "</tr>"
                         )
-                    table_html = (
-                        "<table class=\"dist-table\">"
-                        "<thead><tr><th>Parcela</th><th style=\"text-align:right;\">Monto (CLP)</th><th style=\"text-align:right;\">%</th></tr></thead>"
-                        f"<tbody>{''.join(rows)}</tbody>"
-                        "</table>"
-                        f"<div class=\"dist-footer\"><span>{html.escape(footer)}</span><span>›</span></div>"
-                    )
+
+                    if len(row_parts) > 6:
+                        chunk_size = 4
+                        tables = []
+                        for start in range(0, len(row_parts), chunk_size):
+                            tables.append(
+                                "<table class=\"dist-table\">"
+                                "<thead><tr><th>Parcela</th><th style=\"text-align:right;\">Monto</th><th style=\"text-align:right;\">%</th></tr></thead>"
+                                f"<tbody>{''.join(row_parts[start:start + chunk_size])}</tbody>"
+                                "</table>"
+                            )
+                        table_body = f"<div class=\"dist-table-grid\">{''.join(tables[:3])}</div>"
+                    else:
+                        table_body = (
+                            "<table class=\"dist-table\">"
+                            "<thead><tr><th>Parcela</th><th style=\"text-align:right;\">Monto (CLP)</th><th style=\"text-align:right;\">%</th></tr></thead>"
+                            f"<tbody>{''.join(row_parts)}</tbody>"
+                            "</table>"
+                        )
+
+                    table_html = table_body + f"<div class=\"dist-footer\"><span>{html.escape(footer)}</span><span>›</span></div>"
                     st.markdown(table_html, unsafe_allow_html=True)
 
                 gc_colors = ["#073f4a", "#0d7280", "#2d7a5b", "#338060", "#829bd5", "#b93a3a", "#0c6a83", "#1e9aac", "#5bbd8c", "#62bd97", "#a7b8dc", "#ed8580"]
                 mant_colors = ["#2d7a5b", "#367f5f", "#829bd5", "#0d7280", "#5bbd8c"]
                 project_colors = ["#b93a3a", "#cf514b", "#8f3030"]
 
-                cards = st.columns(3)
+                cards = st.columns(3, gap="small")
                 with cards[0]:
                     with st.container(border=True):
                         _distribution_card(
