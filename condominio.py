@@ -2630,7 +2630,7 @@ def run_streamlit():
                 """
                 <style>
                 .obl-page-head {
-                  margin:0 0 14px 0;
+                  margin:48px 0 14px 0;
                   display:flex;
                   justify-content:space-between;
                   align-items:flex-start;
