@@ -2869,14 +2869,7 @@ def run_streamlit():
                   font-size:22px;
                   font-weight:900;
                 }
-                .obl-hero-actions {
-                  display:flex;
-                  align-items:center;
-                  justify-content:flex-end;
-                  gap:10px;
-                  margin:-2px 0 18px 0;
-                }
-                @media(max-width:1200px){.obl-page-head{display:block;}.obl-top-tools{justify-content:flex-start;margin-top:14px;}.obl-hero-actions{justify-content:flex-start;margin-top:14px;}}
+                @media(max-width:1200px){.obl-page-head{display:block;}.obl-top-tools{justify-content:flex-start;margin-top:14px;}}
                 @media(max-width:700px){.obl-actions{justify-content:flex-start;flex-wrap:wrap;}.obl-kpi-grid{grid-template-columns:1fr;}.obl-search{min-width:100%;}}
                 </style>
                 """,
@@ -2894,10 +2887,6 @@ def run_streamlit():
                     <div class="obl-report-pill">⇩ <span>Descargar reporte (PDF)</span></div>
                     <div class="obl-tool-icons"><span>☆</span><span>✎</span><span>◉</span></div>
                   </div>
-                </div>
-                <div class="obl-hero-actions">
-                  <div class="obl-search">⌕ <span>Buscar por parcela o propietario...</span></div>
-                  <div class="obl-filter">≡ <span>Filtros</span></div>
                 </div>
                 """,
                 unsafe_allow_html=True,
@@ -3735,10 +3724,6 @@ def run_streamlit():
                     "<thead><tr><th>Parcela</th><th>Propietario</th><th class=\"gc-num\">Pendiente (CLP)</th><th>% Pendiente</th><th>Último pago</th></tr></thead>"
                     f"<tbody>{''.join(table_rows)}</tbody>"
                     "</table>"
-                    "<div class=\"gc-footer\">"
-                    f"<div>Mostrando 1 a {len(tabla_prop_page):,} de {len(tabla_prop):,} registros</div>"
-                    "<div class=\"gc-page-controls\"><span>Filas por página</span><span class=\"gc-select\">20⌄</span><span class=\"gc-page\">‹ Anterior</span><span class=\"gc-page active\">1</span><span class=\"gc-page\">Siguiente ›</span></div>"
-                    "</div>"
                     "</div>"
                 )
 
