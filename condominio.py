@@ -1076,7 +1076,10 @@ def run_streamlit():
             tabla_show = tabla_show.drop(columns=["pendiente"])
         if "Diferencia" in tabla_show.columns:
             tabla_show = tabla_show.drop(columns=["Diferencia"])
-        extra_cc_cols = [c for c in tabla_show.columns if c.startswith("Pendiente ")]
+        extra_cc_cols = [
+            c for c in tabla_show.columns
+            if c.startswith("Pendiente ") and c not in ("Pendiente mantención", "Pendiente GC")
+        ]
         total_cols = ["Pendiente", "Pendiente mantención"] + extra_cc_cols
         tabla_show["Total por pagar"] = tabla_show[total_cols].fillna(0).sum(axis=1)
         tabla_show = tabla_show.rename(columns={"Pendiente": "Pendiente GC"})
@@ -2797,7 +2800,10 @@ def run_streamlit():
             if "Diferencia" in tabla_show.columns:
                 tabla_show = tabla_show.drop(columns=["Diferencia"])
             # Formato para columnas adicionales de CC
-            extra_cc_cols = [c for c in tabla_show.columns if c.startswith("Pendiente ")]
+            extra_cc_cols = [
+                c for c in tabla_show.columns
+                if c.startswith("Pendiente ") and c not in ("Pendiente mantención", "Pendiente GC")
+            ]
             # Total por pagar = Pendiente + Pendiente mantención + CCs
             total_cols = ["Pendiente", "Pendiente mantención"] + extra_cc_cols
             tabla_show["Total por pagar"] = tabla_show[total_cols].fillna(0).sum(axis=1)
