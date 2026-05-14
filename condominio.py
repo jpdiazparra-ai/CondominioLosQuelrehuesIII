@@ -3193,78 +3193,79 @@ def run_streamlit():
                   display:flex;
                   justify-content:space-between;
                   align-items:flex-start;
-                  gap:20px;
-                  margin:34px 0 22px 0;
+                  gap:14px;
+                  margin:20px 0 14px 0;
                 }
                 .gc-detail-title {
                   color:#071326;
-                  font-size:25px;
+                  font-size:19px;
                   line-height:1.15;
                   font-weight:900;
-                  margin:0 0 22px 0;
+                  margin:0 0 12px 0;
                 }
                 .gc-summary {
                   display:flex;
                   align-items:center;
-                  gap:18px;
+                  gap:12px;
                 }
                 .gc-summary-icon {
-                  width:58px;
-                  height:58px;
-                  border-radius:12px;
+                  width:42px;
+                  height:42px;
+                  border-radius:10px;
                   display:grid;
                   place-items:center;
                   color:#8a3ffc;
                   background:#eadcff;
-                  font-size:28px;
+                  font-size:20px;
                   font-weight:900;
                 }
                 .gc-summary-label {
                   color:#667085;
-                  font-size:14px;
+                  font-size:11px;
                   font-weight:700;
                 }
                 .gc-summary-value {
                   color:#071326;
-                  font-size:23px;
+                  font-size:17px;
                   line-height:1.1;
                   font-weight:900;
-                  margin-top:5px;
+                  margin-top:3px;
                 }
                 .gc-summary-sub {
                   color:#52647f;
-                  font-size:13px;
+                  font-size:10px;
                   font-weight:700;
-                  margin-top:7px;
+                  margin-top:4px;
                 }
                 .gc-detail-actions {
                   display:flex;
                   align-items:center;
-                  gap:12px;
-                  margin-top:8px;
+                  gap:8px;
+                  margin-top:4px;
                 }
                 .gc-search,
                 .gc-filter,
                 .gc-more {
-                  height:42px;
+                  height:31px;
                   border:1px solid #dfe7f1;
-                  border-radius:8px;
+                  border-radius:7px;
                   background:#fff;
                   display:flex;
                   align-items:center;
-                  gap:10px;
+                  gap:7px;
                   color:#667085;
                   font-weight:800;
+                  font-size:11px;
                   box-shadow:0 4px 12px rgba(15,23,42,.04);
                 }
-                .gc-search { min-width:310px; padding:0 16px; justify-content:flex-start; }
-                .gc-filter { min-width:120px; padding:0 16px; justify-content:center; color:#263449; }
-                .gc-more { width:42px; justify-content:center; border-color:transparent; box-shadow:none; font-size:23px; }
+                .gc-search { min-width:250px; padding:0 12px; justify-content:flex-start; }
+                .gc-filter { min-width:92px; padding:0 12px; justify-content:center; color:#263449; }
+                .gc-more { width:31px; justify-content:center; border-color:transparent; box-shadow:none; font-size:18px; }
                 .gc-layout {
                   display:grid;
                   grid-template-columns:1.18fr .82fr;
-                  gap:28px;
-                  margin-bottom:34px;
+                  gap:18px;
+                  margin-bottom:20px;
                 }
                 .gc-card {
                   background:#fff;
@@ -3278,22 +3279,22 @@ def run_streamlit():
                   border-collapse:separate;
                   border-spacing:0;
                   color:#172033;
-                  font-size:13px;
+                  font-size:10.5px;
                 }
                 .gc-table th {
-                  height:42px;
+                  height:29px;
                   background:#f7f9fc;
                   color:#263449;
                   text-align:left;
                   font-weight:900;
-                  padding:0 14px;
+                  padding:0 9px;
                   border-bottom:1px solid #e2e8f0;
                   border-right:1px solid #e8edf4;
                   white-space:nowrap;
                 }
                 .gc-table td {
-                  height:36px;
-                  padding:0 14px;
+                  height:25px;
+                  padding:0 9px;
                   border-bottom:1px solid #eef2f7;
                   border-right:1px solid #eef2f7;
                   font-weight:800;
@@ -3306,10 +3307,10 @@ def run_streamlit():
                   display:grid;
                   grid-template-columns:42px minmax(90px,1fr);
                   align-items:center;
-                  gap:10px;
+                  gap:7px;
                 }
                 .gc-bar {
-                  height:10px;
+                  height:7px;
                   border-radius:999px;
                   background:#eceff3;
                   overflow:hidden;
@@ -3323,30 +3324,30 @@ def run_streamlit():
                 .calendar-icon {
                   float:right;
                   color:#334a68;
-                  font-size:14px;
-                  margin-left:10px;
+                  font-size:11px;
+                  margin-left:7px;
                 }
                 .gc-footer {
-                  min-height:66px;
-                  padding:0 18px;
+                  min-height:46px;
+                  padding:0 12px;
                   display:flex;
                   justify-content:space-between;
                   align-items:center;
                   color:#667085;
-                  font-size:12px;
+                  font-size:10px;
                   font-weight:800;
                 }
-                .gc-page-controls { display:flex; align-items:center; gap:9px; }
+                .gc-page-controls { display:flex; align-items:center; gap:6px; }
                 .gc-select,
                 .gc-page {
-                  min-height:34px;
+                  min-height:25px;
                   border:1px solid #dfe7f1;
-                  border-radius:8px;
+                  border-radius:7px;
                   display:flex;
                   align-items:center;
                   justify-content:center;
-                  gap:10px;
-                  padding:0 12px;
+                  gap:7px;
+                  padding:0 9px;
                   background:#fff;
                   color:#263449;
                 }
@@ -3360,28 +3361,28 @@ def run_streamlit():
                   border:1px solid #e1e8f1;
                   border-radius:10px;
                   box-shadow:0 10px 24px rgba(15,23,42,.07);
-                  padding:22px 24px 24px 24px;
+                  padding:14px 16px 16px 16px;
                 }
                 .gc-pie-head {
                   display:flex;
                   justify-content:space-between;
                   align-items:center;
-                  margin-bottom:10px;
+                  margin-bottom:6px;
                 }
                 .gc-pie-title {
                   color:#071326;
-                  font-size:18px;
+                  font-size:13px;
                   font-weight:900;
                 }
                 .gc-pie-actions {
                   display:flex;
-                  gap:9px;
+                  gap:6px;
                 }
                 .gc-pie-action {
-                  width:34px;
-                  height:34px;
+                  width:26px;
+                  height:26px;
                   border:1px solid #dfe7f1;
-                  border-radius:8px;
+                  border-radius:7px;
                   display:grid;
                   place-items:center;
                   color:#263449;
@@ -3390,50 +3391,50 @@ def run_streamlit():
                 }
                 .top-debtor {
                   display:grid;
-                  grid-template-columns:58px minmax(0,1fr);
-                  gap:18px;
+                  grid-template-columns:42px minmax(0,1fr);
+                  gap:12px;
                   align-items:center;
                   border:1px solid #e1e8f1;
-                  border-radius:10px;
-                  padding:16px;
-                  margin-top:8px;
+                  border-radius:9px;
+                  padding:11px;
+                  margin-top:5px;
                   background:#fff;
                 }
                 .top-debtor-icon {
-                  width:58px;
-                  height:58px;
-                  border-radius:12px;
+                  width:42px;
+                  height:42px;
+                  border-radius:10px;
                   display:grid;
                   place-items:center;
                   color:#0f6bff;
                   background:#e4efff;
-                  font-size:30px;
+                  font-size:22px;
                   font-weight:900;
                 }
                 .top-debtor-label {
                   color:#667085;
                   font-weight:700;
-                  font-size:13px;
+                  font-size:10px;
                 }
                 .top-debtor-name {
                   color:#071326;
                   font-weight:900;
-                  font-size:18px;
-                  margin-top:4px;
+                  font-size:13px;
+                  margin-top:2px;
                 }
                 .top-debtor-sub {
                   color:#168a57;
                   font-weight:900;
-                  font-size:13px;
-                  margin-top:6px;
+                  font-size:10px;
+                  margin-top:3px;
                 }
                 .gc-detail-link {
                   display:flex;
                   justify-content:space-between;
                   color:#0f6bff;
                   font-weight:900;
-                  font-size:15px;
-                  margin-top:28px;
+                  font-size:11px;
+                  margin-top:14px;
                 }
                 @media(max-width:1200px){.gc-layout{grid-template-columns:1fr;}.gc-card{overflow-x:auto;}}
                 @media(max-width:780px){.gc-detail-head{display:block;}.gc-detail-actions{flex-wrap:wrap}.gc-search{min-width:100%;}}
@@ -3573,10 +3574,10 @@ def run_streamlit():
                         ]
                     )
                     fig_pie.update_layout(
-                        height=430,
+                        height=300,
                         showlegend=True,
-                        legend=dict(title="Parcela", orientation="v", x=1.02, y=0.86, font=dict(size=11)),
-                        margin=dict(l=0, r=72, t=6, b=0),
+                        legend=dict(title="Parcela", orientation="v", x=1.02, y=0.86, font=dict(size=9)),
+                        margin=dict(l=0, r=52, t=4, b=0),
                         paper_bgcolor="#ffffff",
                         plot_bgcolor="#ffffff",
                         annotations=[
@@ -3585,7 +3586,7 @@ def run_streamlit():
                                 showarrow=False,
                                 x=0.5,
                                 y=0.5,
-                                font=dict(size=14, color="#172033", family="Inter, Arial, sans-serif"),
+                                font=dict(size=10, color="#172033", family="Inter, Arial, sans-serif"),
                             )
                         ],
                     )
