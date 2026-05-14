@@ -594,7 +594,6 @@ def run_streamlit():
         [data-testid="stSidebar"] h1,
         [data-testid="stSidebar"] h2,
         [data-testid="stSidebar"] h3,
-        [data-testid="stSidebar"] .stButton,
         [data-testid="stSidebar"] hr {
           display: none;
         }
@@ -658,6 +657,34 @@ def run_streamlit():
           color: #526174;
           font-size: 13px;
           font-weight: 500;
+        }
+        [data-testid="stSidebar"] .stButton {
+          position: fixed;
+          bottom: 2rem;
+          left: 0;
+          width: 138px;
+          display: flex;
+          justify-content: center;
+          z-index: 20;
+        }
+        [data-testid="stSidebar"] .stButton > button {
+          width: 102px;
+          min-height: 72px;
+          border: 1px solid #dfe7f1;
+          border-radius: 12px;
+          background: #ffffff;
+          color: #526174;
+          box-shadow: 0 8px 20px rgba(15,23,42,.06);
+          font-size: 13px;
+          font-weight: 800;
+          line-height: 1.2;
+          white-space: pre-line;
+          padding: 8px 10px;
+        }
+        [data-testid="stSidebar"] .stButton > button:hover {
+          border-color: #b9c7da;
+          color: #0f6bff;
+          background: #f8fbff;
         }
         .top-shell {
           display: flex;
@@ -913,7 +940,6 @@ def run_streamlit():
         st.markdown(
             """
             <div class="side-logo">🏢</div>
-            <div class="side-about"><div style="font-size:24px;">ⓘ</div><div>Acerca de</div></div>
             """,
             unsafe_allow_html=True,
         )
@@ -929,7 +955,15 @@ def run_streamlit():
             index=0,
             format_func=lambda option: section_labels[option],
             label_visibility="collapsed",
+            key="selected_section",
         )
+        if st.button("↻\nActualizar datos", key="refresh_data", help="Recargar datos sin cambiar de pestaña"):
+            st.cache_data.clear()
+            st.session_state["refresh_done"] = True
+            st.rerun()
+
+    if st.session_state.pop("refresh_done", False):
+        st.toast("Datos actualizados")
 
     @st.cache_data(show_spinner=False)
     def _load(url_value: str, cache_version: int, expected_cols: Optional[set[str]] = None) -> pd.DataFrame:
