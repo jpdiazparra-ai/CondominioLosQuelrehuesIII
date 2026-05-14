@@ -2405,6 +2405,38 @@ def run_streamlit():
             st.markdown(
                 """
                 <style>
+                .obl-page-head {
+                  margin:0 0 14px 0;
+                }
+                .obl-page-title {
+                  color:#071326;
+                  font-size:19px;
+                  line-height:1.15;
+                  font-weight:900;
+                  margin:0;
+                }
+                .obl-page-subtitle {
+                  color:#667085;
+                  font-size:12px;
+                  font-weight:700;
+                  margin-top:5px;
+                }
+                .obl-section-head {
+                  margin:18px 0 10px 0;
+                }
+                .obl-section-title {
+                  color:#071326;
+                  font-size:15px;
+                  line-height:1.2;
+                  font-weight:900;
+                  margin:0;
+                }
+                .obl-section-subtitle {
+                  color:#667085;
+                  font-size:11px;
+                  font-weight:700;
+                  margin-top:4px;
+                }
                 .obl-actions {
                   display:flex;
                   justify-content:flex-end;
@@ -2588,9 +2620,26 @@ def run_streamlit():
                 unsafe_allow_html=True,
             )
 
+            st.markdown(
+                """
+                <div class="obl-page-head">
+                  <h1 class="obl-page-title">Obligaciones y pagos</h1>
+                  <div class="obl-page-subtitle">Estado de pagos, pendientes y abonos por parcela</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
             gc_detail_slot = st.empty()
 
-            st.subheader("Obligación acumulada vs Pagos")
+            st.markdown(
+                """
+                <div class="obl-section-head">
+                  <h2 class="obl-section-title">Cumplimiento de obligaciones</h2>
+                  <div class="obl-section-subtitle">Cobertura por parcela, brecha pendiente o saldo a favor</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
             viz_df = tabla_full.copy()
             viz_df["cumplimiento_pct"] = (
                 (viz_df["pagado"] / viz_df["gc_total"].replace(0, pd.NA)) * 100
@@ -3037,7 +3086,7 @@ def run_streamlit():
                     }
                     .gc-detail-title {
                       color:#071326;
-                      font-size:19px;
+                      font-size:16px;
                       line-height:1.15;
                       font-weight:900;
                       margin:0 0 12px 0;
@@ -3307,7 +3356,7 @@ def run_streamlit():
                     f"""
                     <div class="gc-detail-head">
                       <div>
-                        <h2 class="gc-detail-title">Detalle de GC pendientes por parcela</h2>
+                        <h2 class="gc-detail-title">Estado de pendientes por parcela</h2>
                         <div class="gc-summary">
                           <div class="gc-summary-icon">▱</div>
                           <div>
@@ -3448,6 +3497,10 @@ def run_streamlit():
 
             st.markdown(
                 f"""
+                <div class="obl-section-head">
+                  <h2 class="obl-section-title">Resumen de obligaciones por propietario</h2>
+                  <div class="obl-section-subtitle">Pagos, pendientes y total por pagar consolidado por parcela</div>
+                </div>
                 <div class="obl-actions">
                   <div class="obl-search">⌕ <span>Buscar por propietario o parcela...</span></div>
                   <div class="obl-filter">≡ <span>Filtros</span></div>
@@ -3549,6 +3602,16 @@ def run_streamlit():
                 pie_proj = pie_proj[pie_proj["Pendiente proyecto"] > 0][["Parcela", "Pendiente proyecto"]]
             else:
                 pie_proj = pd.DataFrame(columns=["Parcela", "Pendiente proyecto"])
+
+            st.markdown(
+                """
+                <div class="obl-section-head">
+                  <h2 class="obl-section-title">Distribución de pendientes</h2>
+                  <div class="obl-section-subtitle">Gastos comunes, mantención y proyecto</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
 
             st.markdown(
                 """
@@ -3838,8 +3901,15 @@ def run_streamlit():
                             "Ver detalle de parcela",
                         )
 
-
-            st.subheader("Detalle de abonos por parcela")
+            st.markdown(
+                """
+                <div class="obl-section-head">
+                  <h2 class="obl-section-title">Historial de abonos</h2>
+                  <div class="obl-section-subtitle">Detalle de abonos por parcela</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
             cols_ing_det = list(df_ing_o.columns)
             col_fecha_det = _pick_col(cols_ing_det, ["fecha"])
             col_parc_det = _pick_col(cols_ing_det, ["parcela"])
