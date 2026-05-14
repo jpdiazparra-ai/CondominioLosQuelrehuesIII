@@ -2655,14 +2655,15 @@ def run_streamlit():
                 }
                 .obl-section-title {
                   color:#071326;
-                  font-size:15px;
+                  font-size:18px !important;
                   line-height:1.2;
                   font-weight:900;
-                  margin:0;
+                  margin:0 !important;
+                  padding:0 !important;
                 }
                 .obl-section-subtitle {
                   color:#667085;
-                  font-size:11px;
+                  font-size:12px;
                   font-weight:700;
                   margin-top:4px;
                 }
@@ -2707,7 +2708,7 @@ def run_streamlit():
                   align-items:center;
                 }
                 .obl-kpi-label { color:#667085; font-size:14px; font-weight:700; }
-                .obl-kpi-value { color:#071326; font-size:24px; line-height:1.1; font-weight:900; margin-top:8px; }
+                .obl-kpi-value { color:#071326; font-size:22px; line-height:1.1; font-weight:900; margin-top:8px; }
                 .obl-kpi-sub { font-size:12px; font-weight:900; margin-top:10px; }
                 .obl-kpi-icon {
                   width:46px;
@@ -3004,9 +3005,11 @@ def run_streamlit():
                 }}
                 .obl-compare-title {{
                   color:#172033;
-                  font-size:18px;
-                  line-height:1.2;
-                  font-weight:900;
+                  font-size:17px !important;
+                  line-height:1.2 !important;
+                  font-weight:900 !important;
+                  margin:0 !important;
+                  padding:0 !important;
                 }}
                 .obl-compare-sub {{
                   color:#667085;
@@ -3368,13 +3371,13 @@ def run_streamlit():
                     }
                     .gc-kpi-label {
                       color:#667085;
-                      font-size:13px;
+                      font-size:12px;
                       font-weight:800;
                       line-height:1.2;
                     }
                     .gc-kpi-value {
                       color:#071326;
-                      font-size:22px;
+                      font-size:20px;
                       line-height:1.1;
                       font-weight:900;
                       margin-top:6px;
@@ -3391,10 +3394,11 @@ def run_streamlit():
                     .gc-kpi-blue { background:#e4efff; color:#0f6bff; }
                     .gc-detail-title {
                       color:#071326;
-                      font-size:16px;
-                      line-height:1.15;
-                      font-weight:900;
-                      margin:0;
+                      font-size:20px !important;
+                      line-height:1.18 !important;
+                      font-weight:900 !important;
+                      margin:0 !important;
+                      padding:0 !important;
                     }
                     .gc-search,
                     .gc-filter {
@@ -3533,7 +3537,7 @@ def run_streamlit():
                     }
                     .gc-pie-title {
                       color:#071326;
-                      font-size:13px;
+                      font-size:15px;
                       font-weight:900;
                     }
                     .gc-pie-actions {
@@ -3581,7 +3585,7 @@ def run_streamlit():
                     .top-debtor-name {
                       color:#071326;
                       font-weight:900;
-                      font-size:13px;
+                      font-size:14px;
                       margin-top:2px;
                     }
                     .top-debtor-sub {
