@@ -1665,8 +1665,8 @@ def run_streamlit():
             def _money(v: float) -> str:
                 return f"${v:,.0f}"
 
-            def _axis_ticks(values: pd.Series) -> tuple[list[float], list[str]]:
-                vals = pd.to_numeric(values, errors="coerce").fillna(0)
+            def _axis_ticks(values) -> tuple[list[float], list[str]]:
+                vals = pd.Series(values).pipe(pd.to_numeric, errors="coerce").fillna(0)
                 max_v = max(float(vals.max()), 0.0)
                 min_v = min(float(vals.min()), 0.0)
                 upper = max(1_000_000, ((int(max_v) // 1_000_000) + 1) * 1_000_000)
