@@ -1278,7 +1278,7 @@ def run_streamlit():
         )
         return report_pdf
 
-    if selected_section != "Costos":
+    if selected_section == "General":
         col_title, col_btn = st.columns([0.78, 0.22])
         with col_title:
             st.empty()
@@ -2631,19 +2631,24 @@ def run_streamlit():
                 <style>
                 .obl-page-head {
                   margin:0 0 14px 0;
+                  display:flex;
+                  justify-content:space-between;
+                  align-items:flex-start;
+                  gap:18px;
                 }
                 .obl-page-title {
                   color:#071326;
-                  font-size:19px;
+                  font-size:27px !important;
                   line-height:1.15;
                   font-weight:900;
-                  margin:0;
+                  margin:0 !important;
+                  padding:0 !important;
                 }
                 .obl-page-subtitle {
                   color:#667085;
-                  font-size:12px;
-                  font-weight:700;
-                  margin-top:5px;
+                  font-size:13px;
+                  font-weight:800;
+                  margin-top:10px;
                 }
                 .obl-section-head {
                   margin:18px 0 10px 0;
@@ -2838,6 +2843,42 @@ def run_streamlit():
                   border-color:#0f6bff;
                 }
                 @media(max-width:1200px){.obl-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.obl-table-card{overflow-x:auto;}}
+                .obl-top-tools {
+                  display:flex;
+                  align-items:center;
+                  justify-content:flex-end;
+                  gap:20px;
+                }
+                .obl-report-pill {
+                  height:36px;
+                  border:1px solid #dfe7f1;
+                  border-radius:8px;
+                  background:#fff;
+                  box-shadow:0 4px 12px rgba(15,23,42,.08);
+                  color:#071326;
+                  display:flex;
+                  align-items:center;
+                  gap:10px;
+                  padding:0 16px;
+                  font-size:13px;
+                  font-weight:900;
+                }
+                .obl-tool-icons {
+                  display:flex;
+                  align-items:center;
+                  gap:22px;
+                  color:#172033;
+                  font-size:22px;
+                  font-weight:900;
+                }
+                .obl-hero-actions {
+                  display:flex;
+                  align-items:center;
+                  justify-content:flex-end;
+                  gap:10px;
+                  margin:-2px 0 18px 0;
+                }
+                @media(max-width:1200px){.obl-page-head{display:block;}.obl-top-tools{justify-content:flex-start;margin-top:14px;}.obl-hero-actions{justify-content:flex-start;margin-top:14px;}}
                 @media(max-width:700px){.obl-actions{justify-content:flex-start;flex-wrap:wrap;}.obl-kpi-grid{grid-template-columns:1fr;}.obl-search{min-width:100%;}}
                 </style>
                 """,
@@ -2847,8 +2888,19 @@ def run_streamlit():
             st.markdown(
                 """
                 <div class="obl-page-head">
-                  <h1 class="obl-page-title">Obligaciones y pagos</h1>
-                  <div class="obl-page-subtitle">Estado de pagos, pendientes y abonos por parcela</div>
+                  <div>
+                    <h1 class="obl-page-title">Obligaciones y pagos</h1>
+                    <div class="obl-page-subtitle">Estado de pagos, pendientes y abonos por parcela</div>
+                  </div>
+                  <div class="obl-top-tools">
+                    <div class="obl-report-pill">⇩ <span>Descargar reporte (PDF)</span></div>
+                    <div class="obl-tool-icons"><span>☆</span><span>✎</span><span>◉</span><span>⋮</span></div>
+                  </div>
+                </div>
+                <div class="obl-hero-actions">
+                  <div class="obl-search">⌕ <span>Buscar por parcela o propietario...</span></div>
+                  <div class="obl-filter">≡ <span>Filtros</span></div>
+                  <div class="obl-more">⋮</div>
                 </div>
                 """,
                 unsafe_allow_html=True,
@@ -3301,59 +3353,62 @@ def run_streamlit():
                 st.markdown(
                     """
                     <style>
-                    .gc-detail-head {
-                      display:flex;
-                      justify-content:space-between;
-                      align-items:flex-start;
-                      gap:14px;
-                      margin:0 0 14px 0;
+                    .gc-kpi-grid {
+                      display:grid;
+                      grid-template-columns:repeat(4,minmax(0,1fr));
+                      gap:16px;
+                      margin:12px 0 20px 0;
                     }
+                    .gc-kpi-card {
+                      min-height:94px;
+                      background:#fff;
+                      border:1px solid #e1e8f1;
+                      border-radius:10px;
+                      box-shadow:0 8px 20px rgba(15,23,42,.06);
+                      padding:16px 18px;
+                      display:grid;
+                      grid-template-columns:52px minmax(0,1fr);
+                      gap:14px;
+                      align-items:center;
+                    }
+                    .gc-kpi-icon {
+                      width:50px;
+                      height:50px;
+                      border-radius:12px;
+                      display:grid;
+                      place-items:center;
+                      font-size:24px;
+                      font-weight:900;
+                    }
+                    .gc-kpi-label {
+                      color:#667085;
+                      font-size:13px;
+                      font-weight:800;
+                      line-height:1.2;
+                    }
+                    .gc-kpi-value {
+                      color:#071326;
+                      font-size:22px;
+                      line-height:1.1;
+                      font-weight:900;
+                      margin-top:6px;
+                    }
+                    .gc-kpi-sub {
+                      color:#52647f;
+                      font-size:12px;
+                      font-weight:900;
+                      margin-top:8px;
+                    }
+                    .gc-kpi-purple { background:#eadcff; color:#8a3ffc; }
+                    .gc-kpi-green { background:#dff7e8; color:#008a56; }
+                    .gc-kpi-red { background:#ffe2e3; color:#e12626; }
+                    .gc-kpi-blue { background:#e4efff; color:#0f6bff; }
                     .gc-detail-title {
                       color:#071326;
                       font-size:16px;
                       line-height:1.15;
                       font-weight:900;
-                      margin:0 0 12px 0;
-                    }
-                    .gc-summary {
-                      display:flex;
-                      align-items:center;
-                      gap:12px;
-                    }
-                    .gc-summary-icon {
-                      width:42px;
-                      height:42px;
-                      border-radius:10px;
-                      display:grid;
-                      place-items:center;
-                      color:#8a3ffc;
-                      background:#eadcff;
-                      font-size:20px;
-                      font-weight:900;
-                    }
-                    .gc-summary-label {
-                      color:#667085;
-                      font-size:11px;
-                      font-weight:700;
-                    }
-                    .gc-summary-value {
-                      color:#071326;
-                      font-size:17px;
-                      line-height:1.1;
-                      font-weight:900;
-                      margin-top:3px;
-                    }
-                    .gc-summary-sub {
-                      color:#52647f;
-                      font-size:10px;
-                      font-weight:700;
-                      margin-top:4px;
-                    }
-                    .gc-detail-actions {
-                      display:flex;
-                      align-items:center;
-                      gap:8px;
-                      margin-top:4px;
+                      margin:0;
                     }
                     .gc-search,
                     .gc-filter,
@@ -3379,6 +3434,24 @@ def run_streamlit():
                       border-radius:10px;
                       box-shadow:0 10px 24px rgba(15,23,42,.07);
                       overflow:hidden;
+                    }
+                    .gc-card-head {
+                      display:flex;
+                      justify-content:space-between;
+                      align-items:center;
+                      padding:17px 18px 14px 18px;
+                    }
+                    .gc-card-info {
+                      color:#7b879d;
+                      border:1px solid #9aa6ba;
+                      width:15px;
+                      height:15px;
+                      border-radius:50%;
+                      display:inline-grid;
+                      place-items:center;
+                      font-size:10px;
+                      font-weight:900;
+                      margin-left:5px;
                     }
                     .gc-table {
                       width:100%;
@@ -3541,8 +3614,8 @@ def run_streamlit():
                       font-size:11px;
                       margin-top:14px;
                     }
-                    @media(max-width:1200px){.gc-card{overflow-x:auto;}}
-                    @media(max-width:780px){.gc-detail-head{display:block;}.gc-detail-actions{flex-wrap:wrap}.gc-search{min-width:100%;}}
+                    @media(max-width:1200px){.gc-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.gc-card{overflow-x:auto;}}
+                    @media(max-width:780px){.gc-kpi-grid{grid-template-columns:1fr;}.gc-search{min-width:100%;}}
                     </style>
                     """,
                     unsafe_allow_html=True,
@@ -3576,24 +3649,50 @@ def run_streamlit():
                 tabla_prop = tabla_prop.rename(columns={"Fecha": "Último pago"})
 
                 debt_count = int((tabla_prop["Pendiente"].fillna(0) > 0).sum()) if not tabla_prop.empty else 0
+                total_paid_gc = float(tabla_full["pagado"].fillna(0).sum()) if "pagado" in tabla_full.columns else 0.0
+                avg_pending = total_pend_global / debt_count if debt_count else 0.0
+                last_payment = tabla_prop["Último pago"].dropna().max() if "Último pago" in tabla_prop.columns else pd.NaT
+                if pd.notna(last_payment):
+                    last_payment_text = pd.to_datetime(last_payment).strftime("%d-%m-%Y")
+                    days_since = max((pd.Timestamp.today().normalize() - pd.to_datetime(last_payment).normalize()).days, 0)
+                    last_payment_sub = f"Hace {days_since} días"
+                else:
+                    last_payment_text = "-"
+                    last_payment_sub = "Sin registros"
                 st.markdown(
                     f"""
-                    <div class="gc-detail-head">
-                      <div>
-                        <h2 class="gc-detail-title">Estado de pendientes por parcela</h2>
-                        <div class="gc-summary">
-                          <div class="gc-summary-icon">▱</div>
-                          <div>
-                            <div class="gc-summary-label">Total pendiente GC</div>
-                            <div class="gc-summary-value">{_fmt_money(total_pend_global)}</div>
-                            <div class="gc-summary-sub">{debt_count} parcelas con deuda</div>
-                          </div>
+                    <div class="gc-kpi-grid">
+                      <div class="gc-kpi-card">
+                        <div class="gc-kpi-icon gc-kpi-purple">▱</div>
+                        <div>
+                          <div class="gc-kpi-label">Total pendiente GC</div>
+                          <div class="gc-kpi-value">{_fmt_money(total_pend_global)}</div>
+                          <div class="gc-kpi-sub obl-purple">{debt_count} parcelas con deuda</div>
                         </div>
                       </div>
-                      <div class="gc-detail-actions">
-                        <div class="gc-search">⌕ <span>Buscar por parcela o propietario...</span></div>
-                        <div class="gc-filter">≡ <span>Filtros</span></div>
-                        <div class="gc-more">⋮</div>
+                      <div class="gc-kpi-card">
+                        <div class="gc-kpi-icon gc-kpi-green">$</div>
+                        <div>
+                          <div class="gc-kpi-label">Total pagado</div>
+                          <div class="gc-kpi-value">{_fmt_money(total_paid_gc)}</div>
+                          <div class="gc-kpi-sub obl-green">Pagos registrados</div>
+                        </div>
+                      </div>
+                      <div class="gc-kpi-card">
+                        <div class="gc-kpi-icon gc-kpi-red">◷</div>
+                        <div>
+                          <div class="gc-kpi-label">Pendiente promedio</div>
+                          <div class="gc-kpi-value">{_fmt_money(avg_pending)}</div>
+                          <div class="gc-kpi-sub">Por parcela</div>
+                        </div>
+                      </div>
+                      <div class="gc-kpi-card">
+                        <div class="gc-kpi-icon gc-kpi-blue">▣</div>
+                        <div>
+                          <div class="gc-kpi-label">Último pago registrado</div>
+                          <div class="gc-kpi-value">{last_payment_text}</div>
+                          <div class="gc-kpi-sub obl-blue">{last_payment_sub}</div>
+                        </div>
                       </div>
                     </div>
                     """,
@@ -3614,8 +3713,10 @@ def run_streamlit():
                     except Exception:
                         return str(v)
 
+                tabla_prop_sorted = tabla_prop.sort_values("Parcela")
+                tabla_prop_page = tabla_prop_sorted.head(12)
                 table_rows = []
-                for _, row in tabla_prop.sort_values("Parcela").iterrows():
+                for _, row in tabla_prop_page.iterrows():
                     pendiente = float(row.get("Pendiente", 0) or 0)
                     pct = float(row.get("% Pendiente", 0) or 0)
                     bar_width = max(2, min(100, pct)) if pendiente > 0 else 0
@@ -3634,13 +3735,14 @@ def run_streamlit():
 
                 table_html = (
                     "<div class=\"gc-card\">"
+                    "<div class=\"gc-card-head\"><h2 class=\"gc-detail-title\">Estado de pendientes por parcela <span class=\"gc-card-info\">i</span></h2></div>"
                     "<table class=\"gc-table\">"
-                    "<thead><tr><th>Parcela ↕</th><th>Propietario</th><th class=\"gc-num\">Pendiente (CLP) ↕</th><th>% Pendiente ↕</th><th>Último pago</th></tr></thead>"
+                    "<thead><tr><th>Parcela</th><th>Propietario</th><th class=\"gc-num\">Pendiente (CLP)</th><th>% Pendiente</th><th>Último pago</th></tr></thead>"
                     f"<tbody>{''.join(table_rows)}</tbody>"
                     "</table>"
                     "<div class=\"gc-footer\">"
-                    f"<div>Mostrando 1 a {len(tabla_prop):,} de {len(tabla_prop):,} registros</div>"
-                    "<div class=\"gc-page-controls\"><span>Filas por página</span><span class=\"gc-select\">20⌄</span><span class=\"gc-page\">‹ Anterior</span><span class=\"gc-page active\">1</span><span class=\"gc-page\">2</span><span class=\"gc-page\">Siguiente ›</span></div>"
+                    f"<div>Mostrando 1 a {len(tabla_prop_page):,} de {len(tabla_prop):,} parcelas</div>"
+                    "<div class=\"gc-page-controls\"><span class=\"gc-page\">‹ Anterior</span><span class=\"gc-page active\">1</span><span class=\"gc-page\">2</span><span class=\"gc-page\">Siguiente ›</span></div>"
                     "</div>"
                     "</div>"
                 )
