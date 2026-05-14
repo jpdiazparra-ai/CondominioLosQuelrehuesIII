@@ -2760,7 +2760,7 @@ def run_streamlit():
                   padding:0 12px;
                   border-bottom:1px solid #eef2f7;
                   border-right:1px solid #eef2f7;
-                  font-weight:800;
+                  font-weight:500;
                   white-space:nowrap;
                 }
                 .obl-table tr.debt-row td { background:rgba(226,57,57,.055); }
