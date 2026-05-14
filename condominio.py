@@ -1638,12 +1638,23 @@ def run_streamlit():
               padding:5px 0;
               border-bottom:1px solid #e8edf4;
             }
+            .finance-section-title {
+              color:#071326;
+              font-size:22px;
+              line-height:1.2;
+              font-weight:900;
+              margin:18px 0 10px 0;
+            }
             @media (max-width: 1100px) {
               .summary-grid,
               .donut-shell { grid-template-columns:1fr; }
             }
             </style>
             """,
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            '<div class="finance-section-title">Resumen económico del condominio</div>',
             unsafe_allow_html=True,
         )
 
