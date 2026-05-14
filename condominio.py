@@ -2674,8 +2674,7 @@ def run_streamlit():
                   margin:2px 0 18px 0;
                 }
                 .obl-search,
-                .obl-filter,
-                .obl-more {
+                .obl-filter {
                   height:44px;
                   border:1px solid #dfe7f1;
                   border-radius:8px;
@@ -2689,7 +2688,6 @@ def run_streamlit():
                 }
                 .obl-search { min-width:300px; padding:0 18px; justify-content:flex-start; }
                 .obl-filter { min-width:128px; padding:0 18px; justify-content:center; color:#263449; }
-                .obl-more { width:44px; justify-content:center; font-size:24px; border-color:transparent; box-shadow:none; }
                 .obl-kpi-grid {
                   display:grid;
                   grid-template-columns:repeat(5,minmax(0,1fr));
@@ -2894,13 +2892,12 @@ def run_streamlit():
                   </div>
                   <div class="obl-top-tools">
                     <div class="obl-report-pill">⇩ <span>Descargar reporte (PDF)</span></div>
-                    <div class="obl-tool-icons"><span>☆</span><span>✎</span><span>◉</span><span>⋮</span></div>
+                    <div class="obl-tool-icons"><span>☆</span><span>✎</span><span>◉</span></div>
                   </div>
                 </div>
                 <div class="obl-hero-actions">
                   <div class="obl-search">⌕ <span>Buscar por parcela o propietario...</span></div>
                   <div class="obl-filter">≡ <span>Filtros</span></div>
-                  <div class="obl-more">⋮</div>
                 </div>
                 """,
                 unsafe_allow_html=True,
@@ -3253,7 +3250,7 @@ def run_streamlit():
                       <div class="obl-compare-title">Cobertura de obligaciones por parcela</div>
                       <div class="obl-compare-sub">Parcelas 17 al 36 · obligación referencial por parcela {_money_short(gc_total_parcela)}</div>
                     </div>
-                    <div class="obl-compare-tools"><span class="obl-compare-tool">▣</span><span class="obl-compare-tool">⛶</span><span class="obl-compare-tool">⋮</span></div>
+                    <div class="obl-compare-tools"><span class="obl-compare-tool">▣</span><span class="obl-compare-tool">⛶</span></div>
                   </div>
                   <div class="obl-compare-grid">
                     <div class="obl-compare-main">
@@ -3411,8 +3408,7 @@ def run_streamlit():
                       margin:0;
                     }
                     .gc-search,
-                    .gc-filter,
-                    .gc-more {
+                    .gc-filter {
                       height:31px;
                       border:1px solid #dfe7f1;
                       border-radius:7px;
@@ -3427,7 +3423,6 @@ def run_streamlit():
                     }
                     .gc-search { min-width:250px; padding:0 12px; justify-content:flex-start; }
                     .gc-filter { min-width:92px; padding:0 12px; justify-content:center; color:#263449; }
-                    .gc-more { width:31px; justify-content:center; border-color:transparent; box-shadow:none; font-size:18px; }
                     .gc-card {
                       background:#fff;
                       border:1px solid #e1e8f1;
@@ -3811,7 +3806,7 @@ def run_streamlit():
                 with detail_right:
                     with st.container(border=True):
                         st.markdown(
-                            "<div class=\"gc-pie-head\"><div class=\"gc-pie-title\">Distribución % deuda por parcela</div><div class=\"gc-pie-actions\"><span class=\"gc-pie-action\">▣</span><span class=\"gc-pie-action\">⛶</span><span class=\"gc-pie-action\">⋮</span></div></div>",
+                            "<div class=\"gc-pie-head\"><div class=\"gc-pie-title\">Distribución % deuda por parcela</div><div class=\"gc-pie-actions\"><span class=\"gc-pie-action\">▣</span><span class=\"gc-pie-action\">⛶</span></div></div>",
                             unsafe_allow_html=True,
                         )
                         if fig_pie is not None:
@@ -3830,7 +3825,6 @@ def run_streamlit():
                 <div class="obl-actions">
                   <div class="obl-search">⌕ <span>Buscar por propietario o parcela...</span></div>
                   <div class="obl-filter">≡ <span>Filtros</span></div>
-                  <div class="obl-more">⋮</div>
                 </div>
                 <div class="obl-kpi-grid">
                   <div class="obl-kpi-card">
