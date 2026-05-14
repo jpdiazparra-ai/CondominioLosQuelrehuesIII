@@ -2926,87 +2926,259 @@ def run_streamlit():
             else:
                 pie_proj = pd.DataFrame(columns=["Parcela", "Pendiente proyecto"])
 
+            st.markdown(
+                """
+                <style>
+                .dist-card-head {
+                  display:flex;
+                  justify-content:space-between;
+                  align-items:flex-start;
+                  gap:12px;
+                  margin-bottom:10px;
+                }
+                .dist-title {
+                  color:#172033;
+                  font-size:21px;
+                  line-height:1.2;
+                  font-weight:900;
+                  margin:0;
+                }
+                .dist-actions {
+                  display:flex;
+                  gap:8px;
+                }
+                .dist-action {
+                  width:36px;
+                  height:36px;
+                  border:1px solid #dfe7f1;
+                  border-radius:9px;
+                  display:grid;
+                  place-items:center;
+                  color:#253247;
+                  background:#fff;
+                  box-shadow:0 3px 9px rgba(15,23,42,.05);
+                  font-weight:900;
+                }
+                .dist-rule {
+                  width:39%;
+                  height:1px;
+                  background:#dfe6ef;
+                  margin:10px 0 18px 0;
+                }
+                .dist-summary {
+                  display:flex;
+                  align-items:center;
+                  gap:18px;
+                  margin-bottom:12px;
+                }
+                .dist-icon {
+                  width:66px;
+                  height:66px;
+                  border-radius:14px;
+                  display:grid;
+                  place-items:center;
+                  font-size:30px;
+                  font-weight:900;
+                }
+                .dist-label {
+                  color:#68738a;
+                  font-size:14px;
+                  font-weight:700;
+                }
+                .dist-value {
+                  color:#172033;
+                  font-size:23px;
+                  font-weight:900;
+                  margin-top:4px;
+                }
+                .dist-count {
+                  font-size:13px;
+                  font-weight:900;
+                  margin-top:8px;
+                }
+                .dist-table {
+                  width:100%;
+                  border-collapse:collapse;
+                  margin-top:4px;
+                  color:#172033;
+                  font-size:13px;
+                }
+                .dist-table th {
+                  color:#667085;
+                  font-weight:700;
+                  text-align:left;
+                  padding:9px 0;
+                  border-bottom:1px solid #dfe6ef;
+                }
+                .dist-table td {
+                  padding:8px 0;
+                  border-bottom:1px solid #e5ebf3;
+                  font-weight:800;
+                }
+                .dist-dot {
+                  width:13px;
+                  height:13px;
+                  display:inline-block;
+                  border-radius:50%;
+                  margin-right:12px;
+                  vertical-align:middle;
+                }
+                .dist-footer {
+                  display:flex;
+                  justify-content:space-between;
+                  align-items:center;
+                  color:#0f6bff;
+                  font-weight:900;
+                  font-size:16px;
+                  margin-top:26px;
+                }
+                </style>
+                """,
+                unsafe_allow_html=True,
+            )
+
             try:
-                import plotly.express as px
+                import plotly.graph_objects as go
             except Exception:
                 st.error("Falta Plotly para el gráfico avanzado. Instala con: pip install plotly")
             else:
-                c1, c2, c3 = st.columns(3)
-                with c1:
-                    if not pie_gc.empty:
-                        fig_gc = px.pie(
-                            pie_gc,
-                            names="Parcela",
-                            values="Pendiente GC",
-                            title="Distribución pendiente GC por parcela",
-                            hole=0.35,
-                            color_discrete_sequence=["#0B1F2A", "#1F4F5B", "#2C5B4A", "#3A6B5A", "#8DA2C8", "#A4463F"],
+                def _fmt_money_card(v) -> str:
+                    try:
+                        return f"${float(v):,.0f}"
+                    except Exception:
+                        return "$0"
+
+                def _distribution_card(
+                    source: pd.DataFrame,
+                    value_col: str,
+                    title: str,
+                    label: str,
+                    icon: str,
+                    tone: str,
+                    colors: list[str],
+                    footer: str,
+                ):
+                    total = float(source[value_col].sum()) if not source.empty else 0.0
+                    count = int(source["Parcela"].nunique()) if not source.empty else 0
+                    count_label = "parcela" if count == 1 else "parcelas"
+                    header_html = (
+                        "<div class=\"dist-card-head\">"
+                        f"<h3 class=\"dist-title\">{html.escape(title)}</h3>"
+                        "<div class=\"dist-actions\"><span class=\"dist-action\">▣</span><span class=\"dist-action\">⛶</span></div>"
+                        "</div>"
+                        "<div class=\"dist-rule\"></div>"
+                        "<div class=\"dist-summary\">"
+                        f"<div class=\"dist-icon\" style=\"background:{tone}22;color:{tone};\">{icon}</div>"
+                        "<div>"
+                        f"<div class=\"dist-label\">{html.escape(label)}</div>"
+                        f"<div class=\"dist-value\">{_fmt_money_card(total)}</div>"
+                        f"<div class=\"dist-count\" style=\"color:{tone};\">{count} {count_label}</div>"
+                        "</div>"
+                        "</div>"
+                    )
+                    st.markdown(header_html, unsafe_allow_html=True)
+
+                    if source.empty:
+                        st.info("Sin datos para graficar.")
+                        return
+
+                    plot_df = source.copy()
+                    plot_df["Parcela"] = plot_df["Parcela"].astype(int).astype(str)
+                    plot_df["pct"] = (plot_df[value_col] / total * 100) if total else 0
+                    color_seq = [colors[i % len(colors)] for i in range(len(plot_df))]
+                    fig = go.Figure(
+                        data=[
+                            go.Pie(
+                                labels=plot_df["Parcela"],
+                                values=plot_df[value_col],
+                                hole=0.38,
+                                sort=False,
+                                marker=dict(colors=color_seq, line=dict(color="rgba(255,255,255,.18)", width=1)),
+                                texttemplate="%{label}<br>%{percent}",
+                                textposition="inside",
+                                textfont=dict(color="white", size=13, family="Inter, Arial, sans-serif"),
+                                hovertemplate="Parcela %{label}<br>Monto CLP %{value:,.0f}<br>%{percent}<extra></extra>",
+                            )
+                        ]
+                    )
+                    fig.update_layout(
+                        height=350,
+                        showlegend=False,
+                        margin=dict(l=0, r=0, t=2, b=2),
+                        paper_bgcolor="#ffffff",
+                        plot_bgcolor="#ffffff",
+                        annotations=[
+                            dict(
+                                text=f"Total<br><b>{_fmt_money_card(total)}</b><br>100%",
+                                showarrow=False,
+                                x=0.5,
+                                y=0.5,
+                                font=dict(size=14, color="#667085", family="Inter, Arial, sans-serif"),
+                            )
+                        ],
+                    )
+                    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+
+                    rows = []
+                    for i, (_, r) in enumerate(plot_df.iterrows()):
+                        pct = float(r["pct"])
+                        rows.append(
+                            "<tr>"
+                            f"<td><span class=\"dist-dot\" style=\"background:{color_seq[i]};\"></span>{html.escape(str(r['Parcela']))}</td>"
+                            f"<td style=\"text-align:right;\">{_fmt_money_card(float(r[value_col]))}</td>"
+                            f"<td style=\"text-align:right;\">{pct:.1f}%</td>"
+                            "</tr>"
                         )
-                        fig_gc.update_traces(
-                            textinfo="label+percent",
-                            textposition="auto",
-                            texttemplate="%{label}<br>%{percent}",
-                            automargin=True,
-                            hovertemplate="Parcela %{label}<br>Participación %{percent}<extra></extra>",
+                    table_html = (
+                        "<table class=\"dist-table\">"
+                        "<thead><tr><th>Parcela</th><th style=\"text-align:right;\">Monto (CLP)</th><th style=\"text-align:right;\">%</th></tr></thead>"
+                        f"<tbody>{''.join(rows)}</tbody>"
+                        "</table>"
+                        f"<div class=\"dist-footer\"><span>{html.escape(footer)}</span><span>›</span></div>"
+                    )
+                    st.markdown(table_html, unsafe_allow_html=True)
+
+                gc_colors = ["#073f4a", "#0d7280", "#2d7a5b", "#338060", "#829bd5", "#b93a3a", "#0c6a83", "#1e9aac", "#5bbd8c", "#62bd97", "#a7b8dc", "#ed8580"]
+                mant_colors = ["#2d7a5b", "#367f5f", "#829bd5", "#0d7280", "#5bbd8c"]
+                project_colors = ["#b93a3a", "#cf514b", "#8f3030"]
+
+                cards = st.columns(3)
+                with cards[0]:
+                    with st.container(border=True):
+                        _distribution_card(
+                            pie_gc.sort_values("Pendiente GC", ascending=False),
+                            "Pendiente GC",
+                            "Distribución pendiente GC por parcela",
+                            "Total pendiente GC",
+                            "▱",
+                            "#3ba874",
+                            gc_colors,
+                            "Ver todas las parcelas",
                         )
-                        fig_gc.update_layout(
-                            height=520,
-                            margin=dict(l=20, r=20, t=40, b=80),
-                            legend_title_text="Parcela",
+                with cards[1]:
+                    with st.container(border=True):
+                        _distribution_card(
+                            pie_mant.sort_values("Pendiente mantención", ascending=False),
+                            "Pendiente mantención",
+                            "Distribución pendiente mantención",
+                            "Total pendiente mantención",
+                            "⌕",
+                            "#3ba874",
+                            mant_colors,
+                            "Ver detalle de parcelas",
                         )
-                        st.plotly_chart(fig_gc, use_container_width=True)
-                    else:
-                        st.info("Sin pendiente GC.")
-                with c2:
-                    if not pie_mant.empty:
-                        fig_m = px.pie(
-                            pie_mant,
-                            names="Parcela",
-                            values="Pendiente mantención",
-                            title="Distribución pendiente mantención",
-                            hole=0.35,
-                            color_discrete_sequence=["#2C5B4A", "#3A6B5A", "#8DA2C8", "#0B1F2A", "#1F4F5B", "#A4463F"],
+                with cards[2]:
+                    with st.container(border=True):
+                        _distribution_card(
+                            pie_proj.sort_values("Pendiente proyecto", ascending=False),
+                            "Pendiente proyecto",
+                            "Distribución pendiente proyecto",
+                            "Total pendiente proyecto",
+                            "▥",
+                            "#b93a3a",
+                            project_colors,
+                            "Ver detalle de parcela",
                         )
-                        fig_m.update_traces(
-                            textinfo="label+percent",
-                            textposition="auto",
-                            texttemplate="%{label}<br>%{percent}",
-                            automargin=True,
-                            hovertemplate="Parcela %{label}<br>Participación %{percent}<extra></extra>",
-                        )
-                        fig_m.update_layout(
-                            height=520,
-                            margin=dict(l=20, r=20, t=40, b=80),
-                            legend_title_text="Parcela",
-                        )
-                        st.plotly_chart(fig_m, use_container_width=True)
-                    else:
-                        st.info("Sin pendiente mantención.")
-                with c3:
-                    if not pie_proj.empty:
-                        fig_p = px.pie(
-                            pie_proj,
-                            names="Parcela",
-                            values="Pendiente proyecto",
-                            title="Distribución pendiente proyecto",
-                            hole=0.35,
-                            color_discrete_sequence=["#A4463F", "#8DA2C8", "#3A6B5A", "#2C5B4A", "#1F4F5B", "#0B1F2A"],
-                        )
-                        fig_p.update_traces(
-                            textinfo="label+percent",
-                            textposition="auto",
-                            texttemplate="%{label}<br>%{percent}",
-                            automargin=True,
-                            hovertemplate="Parcela %{label}<br>Participación %{percent}<extra></extra>",
-                        )
-                        fig_p.update_layout(
-                            height=520,
-                            margin=dict(l=20, r=20, t=40, b=80),
-                            legend_title_text="Parcela",
-                        )
-                        st.plotly_chart(fig_p, use_container_width=True)
-                    else:
-                        st.info("Sin pendiente proyecto.")
 
             st.subheader("Detalle de GC pendientes por parcela")
             tabla_prop = tabla_show[["Parcela", "Propietario", "Total por pagar"]].copy()
