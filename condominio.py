@@ -2274,7 +2274,6 @@ def run_streamlit():
         st.dataframe(filt, use_container_width=True)
 
     if selected_section == "Obligaciones":
-        st.subheader("Obligaciones vs Pagos (por año y parcela)")
         with st.spinner("Cargando obligaciones y pagos..."):
             df_obl = _load(OBLIGACIONES_CSV_URL, CACHE_VERSION, {"ano", "anio", "año", "parcela", "gc"})
             df_ing_o = _load(INGRESOS_CSV_URL, CACHE_VERSION, {"fecha", "parcela", "abono"})
@@ -2303,36 +2302,9 @@ def run_streamlit():
         if tabla.empty:
             st.warning("No se pudieron construir obligaciones vs pagos. Revisa columnas de año/parcela/gc.")
         else:
-            fig_obl_pie = None
             fig_gc = None
             fig_m = None
             fig_p = None
-            oblig_show = pd.DataFrame()
-            if not oblig_anual.empty:
-                st.subheader("Obligación por año (GC)")
-                c_left, c_right = st.columns([1.2, 1])
-                with c_left:
-                    oblig_show = oblig_anual.copy()
-                    oblig_show = oblig_show.rename(columns={"anio": "Año", "gc_total": "GC total por año"})
-                    oblig_show["GC total por año"] = oblig_show["GC total por año"].map(lambda x: f"${x:,.0f}")
-                    st.dataframe(oblig_show, use_container_width=True, height=260, hide_index=True)
-                with c_right:
-                    try:
-                        import plotly.express as px
-                    except Exception:
-                        st.error("Falta Plotly para el gráfico avanzado. Instala con: pip install plotly")
-                    else:
-                        fig_obl_pie = px.pie(
-                            oblig_anual,
-                            names="anio",
-                            values="gc_total",
-                            title="Distribución GC por año",
-                            hole=0.35,
-                            color_discrete_sequence=["#0B1F2A", "#1F4F5B", "#2C5B4A", "#3A6B5A", "#8DA2C8", "#A4463F"],
-                        )
-                        fig_obl_pie.update_traces(textinfo="percent+label")
-                        fig_obl_pie.update_layout(height=260, margin=dict(l=10, r=10, t=40, b=10))
-                        st.plotly_chart(fig_obl_pie, use_container_width=True)
 
             tabla_full = tabla.copy()
             tabla_full["pendiente_pos"] = tabla_full["pendiente"].clip(lower=0)
