@@ -1530,111 +1530,343 @@ def run_streamlit():
             unsafe_allow_html=True,
         )
 
+        st.markdown(
+            """
+            <style>
+            .finance-card {
+              background:#fff;
+              border:1px solid #e6edf5;
+              border-radius:14px;
+              box-shadow:0 8px 22px rgba(15,23,42,.07);
+              padding:18px 22px 14px 22px;
+              margin:18px 0 22px 0;
+            }
+            .finance-card-title {
+              color:#172033;
+              font-size:20px;
+              font-weight:900;
+              margin:0 0 12px 0;
+              display:flex;
+              align-items:center;
+              gap:10px;
+            }
+            .finance-info {
+              color:#7b879d;
+              border:1px solid #9aa6ba;
+              width:17px;
+              height:17px;
+              border-radius:50%;
+              display:inline-grid;
+              place-items:center;
+              font-size:11px;
+              font-weight:800;
+            }
+            .finance-toolbar {
+              float:right;
+              display:flex;
+              gap:8px;
+              color:#344055;
+              margin-top:-4px;
+            }
+            .finance-tool {
+              min-width:32px;
+              height:32px;
+              display:grid;
+              place-items:center;
+              border:1px solid #e1e8f1;
+              border-radius:8px;
+              box-shadow:0 2px 7px rgba(15,23,42,.05);
+              font-weight:800;
+            }
+            .summary-grid {
+              display:grid;
+              grid-template-columns:1.15fr .95fr;
+              gap:16px;
+              margin-top:8px;
+            }
+            .year-table-wrap {
+              border:1px solid #e3e9f2;
+              border-radius:10px;
+              overflow:hidden;
+              margin-top:12px;
+            }
+            .year-table {
+              width:100%;
+              border-collapse:collapse;
+              font-size:14px;
+              color:#182236;
+            }
+            .year-table th {
+              background:#f8fafc;
+              color:#59657a;
+              font-weight:700;
+              text-align:left;
+              padding:12px 14px;
+              border-bottom:1px solid #e3e9f2;
+            }
+            .year-table td {
+              padding:11px 14px;
+              border-bottom:1px solid #e8edf4;
+            }
+            .year-dot {
+              width:11px;
+              height:11px;
+              border-radius:999px;
+              display:inline-block;
+              margin-right:20px;
+              vertical-align:middle;
+            }
+            .net-negative { color:#e12626; }
+            .donut-shell {
+              display:grid;
+              grid-template-columns:minmax(0, 1fr) 260px;
+              gap:20px;
+              align-items:center;
+            }
+            .donut-legend-title,
+            .donut-legend-row {
+              display:grid;
+              grid-template-columns:70px 1fr;
+              gap:18px;
+              align-items:center;
+            }
+            .donut-legend-title {
+              color:#59657a;
+              font-size:13px;
+              font-weight:800;
+              margin-bottom:8px;
+            }
+            .donut-legend-row {
+              color:#172033;
+              font-size:14px;
+              padding:8px 0;
+              border-bottom:1px solid #e8edf4;
+            }
+            @media (max-width: 1100px) {
+              .summary-grid,
+              .donut-shell { grid-template-columns:1fr; }
+            }
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
+
         try:
-            import plotly.express as px
+            import plotly.graph_objects as go
         except Exception:
             st.error("Falta Plotly para el gráfico avanzado. Instala con: pip install plotly")
         else:
-            df_long = df_y.melt(
-                id_vars=["anio"],
-                value_vars=["ingresos", "costos", "neto"],
-                var_name="tipo",
-                value_name="monto",
-            )
-            fig_g = px.bar(
-                df_long,
-                x="anio",
-                y="monto",
-                color="tipo",
-                barmode="group",
-                text="monto",
-                title="Ingresos, Costos y Neto — Totales por año",
-                labels={"anio": "Año", "monto": "Monto (CLP)", "tipo": "Tipo"},
-                color_discrete_map={
-                    "ingresos": "#1F6F5B",
-                    "costos": "#A4463F",
-                    "neto": "#8DA2C8",
-                },
-            )
-            fig_g.update_traces(texttemplate="$%{text:,.0f}", textposition="inside", textfont_color="white")
-            fig_g.update_layout(
-                hovermode="x unified",
-                height=520,
-                plot_bgcolor="#ffffff",
-                paper_bgcolor="white",
-                font=dict(family="Helvetica, Arial, sans-serif", size=12, color="#273043"),
-                xaxis=dict(title="Año", showgrid=False),
-                yaxis=dict(title="Monto (CLP)", gridcolor="#e9edf3"),
-                legend=dict(orientation="h", y=1.12, x=0.01),
-                margin=dict(l=40, r=20, t=70, b=40),
-            )
+            series_colors = {
+                "Ingresos": "#159b7d",
+                "Costos": "#d9363e",
+                "Neto": "#5764d9",
+            }
+
+            def _money(v: float) -> str:
+                return f"${v:,.0f}"
+
+            def _axis_ticks(values: pd.Series) -> tuple[list[float], list[str]]:
+                vals = pd.to_numeric(values, errors="coerce").fillna(0)
+                max_v = max(float(vals.max()), 0.0)
+                min_v = min(float(vals.min()), 0.0)
+                upper = max(1_000_000, ((int(max_v) // 1_000_000) + 1) * 1_000_000)
+                lower = -1_000_000 if min_v < 0 else 0
+                ticks = list(range(lower, upper + 1, 1_000_000))
+                labels = ["0" if t == 0 else f"{'-' if t < 0 else ''}{abs(t) // 1_000_000}M" for t in ticks]
+                return ticks, labels
+
+            def _make_year_bars(data: pd.DataFrame, title: str):
+                fig = go.Figure()
+                for col, label in [("ingresos", "Ingresos"), ("costos", "Costos"), ("neto", "Neto")]:
+                    fig.add_trace(
+                        go.Bar(
+                            x=data["anio"].astype(str),
+                            y=data[col],
+                            name=label,
+                            marker=dict(color=series_colors[label], line=dict(width=0)),
+                            text=data[col].map(_money),
+                            textposition="outside",
+                            textfont=dict(color="#172033", size=11, family="Inter, Arial, sans-serif"),
+                            hovertemplate=f"{label}<br>Año %{{x}}<br>%{{y:,.0f}} CLP<extra></extra>",
+                            cliponaxis=False,
+                        )
+                    )
+                ticks, ticktext = _axis_ticks(data[["ingresos", "costos", "neto"]].to_numpy().ravel())
+                fig.update_layout(
+                    barmode="group",
+                    bargap=0.32,
+                    bargroupgap=0.12,
+                    height=340,
+                    plot_bgcolor="#ffffff",
+                    paper_bgcolor="#ffffff",
+                    font=dict(family="Inter, Arial, sans-serif", color="#536078", size=13),
+                    margin=dict(l=48, r=22, t=18, b=54),
+                    legend=dict(
+                        orientation="h",
+                        yanchor="bottom",
+                        y=1.04,
+                        xanchor="left",
+                        x=0,
+                        title_text="",
+                        font=dict(size=13, color="#334155"),
+                    ),
+                    hovermode="x unified",
+                    title=None,
+                )
+                fig.update_xaxes(
+                    title_text="Año",
+                    title_font=dict(size=15, color="#59657a"),
+                    tickfont=dict(size=13, color="#68738a"),
+                    showline=True,
+                    linecolor="#d9e1eb",
+                    showgrid=False,
+                    zeroline=False,
+                )
+                fig.update_yaxes(
+                    title_text="Monto (CLP)",
+                    title_font=dict(size=14, color="#59657a"),
+                    tickvals=ticks,
+                    ticktext=ticktext,
+                    tickfont=dict(size=12, color="#68738a"),
+                    gridcolor="#dfe6ef",
+                    griddash="dot",
+                    zeroline=True,
+                    zerolinecolor="#d1d9e4",
+                    range=[min(ticks) - 350_000, max(ticks) + 500_000],
+                )
+                return fig
 
             df_y_cum = df_y.copy()
             df_y_cum[["ingresos", "costos", "neto"]] = df_y_cum[["ingresos", "costos", "neto"]].cumsum()
-            df_long_cum = df_y_cum.melt(
-                id_vars=["anio"],
-                value_vars=["ingresos", "costos", "neto"],
-                var_name="tipo",
-                value_name="monto",
-            )
-            fig_cum = px.bar(
-                df_long_cum,
-                x="anio",
-                y="monto",
-                color="tipo",
-                barmode="group",
-                text="monto",
-                title="Ingresos, Costos y Neto — Acumulado por año",
-                labels={"anio": "Año", "monto": "Monto (CLP)", "tipo": "Tipo"},
-                color_discrete_map={
-                    "ingresos": "#1F6F5B",
-                    "costos": "#A4463F",
-                    "neto": "#8DA2C8",
-                },
-            )
-            fig_cum.update_traces(texttemplate="$%{text:,.0f}", textposition="inside", textfont_color="white")
-            fig_cum.update_layout(
-                hovermode="x unified",
-                height=520,
-                plot_bgcolor="#ffffff",
-                paper_bgcolor="white",
-                font=dict(family="Helvetica, Arial, sans-serif", size=12, color="#273043"),
-                xaxis=dict(title="Año", showgrid=False),
-                yaxis=dict(title="Monto (CLP)", gridcolor="#e9edf3"),
-                legend=dict(orientation="h", y=1.12, x=0.01),
-                margin=dict(l=40, r=20, t=70, b=40),
-            )
-            st.plotly_chart(fig_cum, use_container_width=True)
-            st.plotly_chart(fig_g, use_container_width=True)
 
-        st.subheader("Resumen por año")
-        df_y_show = df_y.copy()
-        df_y_show = df_y_show.rename(columns={"ingresos": "Ingresos", "costos": "Costos", "neto": "Neto", "anio": "Año"})
-        for col in ["Ingresos", "Costos", "Neto"]:
-            df_y_show[col] = df_y_show[col].map(lambda x: f"${x:,.0f}")
-        left_tbl, right_pie = st.columns([1.2, 1])
-        with left_tbl:
-            st.dataframe(df_y_show, use_container_width=True, height=360, hide_index=True)
-        with right_pie:
-            try:
-                import plotly.express as px
-            except Exception:
-                st.error("Falta Plotly para el gráfico avanzado. Instala con: pip install plotly")
-            else:
-                if not df_y.empty:
-                    fig_pie_y = px.pie(
-                        df_y,
-                        names="anio",
-                        values="ingresos",
-                        title="Distribución de ingresos por año",
-                        hole=0.35,
-                        color_discrete_sequence=["#0B1F2A", "#1F4F5B", "#2C5B4A", "#3A6B5A", "#8DA2C8", "#A4463F"],
+            for chart_title, chart_data, tools in [
+                ("Ingresos, Costos y Neto — Acumulado por año", df_y_cum, "↗ ▥ ▣ ⛶ ⋮"),
+                ("Ingresos, Costos y Neto — Totales por año", df_y, "↗ ▥ ▣ ⛶ ⋮"),
+            ]:
+                with st.container(border=True):
+                    st.markdown(
+                        f"""
+                        <div class="finance-toolbar">
+                          {''.join(f'<span class="finance-tool">{t}</span>' for t in tools.split())}
+                        </div>
+                        <div class="finance-card-title">{html.escape(chart_title)} <span class="finance-info">i</span></div>
+                        """,
+                        unsafe_allow_html=True,
                     )
-                    fig_pie_y.update_traces(textinfo="percent+label")
-                    fig_pie_y.update_layout(height=360, margin=dict(l=10, r=10, t=50, b=10), legend_title_text="Año")
-                    st.plotly_chart(fig_pie_y, use_container_width=True)
-                else:
-                    st.info("Sin datos para el gráfico.")
+                    st.plotly_chart(_make_year_bars(chart_data, chart_title), use_container_width=True, config={"displayModeBar": False})
+
+            year_colors = {
+                2025: "#073f4a",
+                2024: "#147d72",
+                2022: "#4c9566",
+                2023: "#63c896",
+                2026: "#7896d8",
+                2021: "#d9363e",
+            }
+            fallback_colors = ["#073f4a", "#147d72", "#4c9566", "#63c896", "#7896d8", "#d9363e"]
+            years_sorted = sorted([int(y) for y in df_y["anio"].dropna().tolist()])
+            color_for_year = {
+                year: year_colors.get(year, fallback_colors[i % len(fallback_colors)])
+                for i, year in enumerate(years_sorted)
+            }
+
+            table_rows = []
+            for _, row in df_y.sort_values("anio").iterrows():
+                year = int(row["anio"])
+                net_class = " class='net-negative'" if float(row["neto"]) < 0 else ""
+                table_rows.append(
+                    f"""
+                    <tr>
+                      <td><span class="year-dot" style="background:{color_for_year[year]}"></span>{year}</td>
+                      <td>{_money(float(row["ingresos"]))}</td>
+                      <td>{_money(float(row["costos"]))}</td>
+                      <td{net_class}>{_money(float(row["neto"]))}</td>
+                    </tr>
+                    """
+                )
+            table_html = f"""
+              <div class="finance-card">
+                <div class="finance-card-title">Resumen por año <span class="finance-info">i</span></div>
+                <div class="year-table-wrap">
+                  <table class="year-table">
+                    <thead><tr><th>Año</th><th>Ingresos (CLP)</th><th>Costos (CLP)</th><th>Neto (CLP)</th></tr></thead>
+                    <tbody>{''.join(table_rows)}</tbody>
+                  </table>
+                </div>
+              </div>
+            """
+
+            pie_df = df_y.copy()
+            pie_df["anio_int"] = pie_df["anio"].astype(int)
+            pie_df = pie_df.sort_values("ingresos", ascending=False)
+            pie_colors = [color_for_year[int(y)] for y in pie_df["anio_int"]]
+            fig_pie_y = go.Figure(
+                data=[
+                    go.Pie(
+                        labels=pie_df["anio_int"].astype(str),
+                        values=pie_df["ingresos"],
+                        hole=0.42,
+                        sort=False,
+                        marker=dict(colors=pie_colors, line=dict(color="rgba(255,255,255,.22)", width=1)),
+                        texttemplate="%{label}<br>%{percent}",
+                        textposition="inside",
+                        textfont=dict(color="white", size=12, family="Inter, Arial, sans-serif"),
+                        hovertemplate="Año %{label}<br>Ingresos CLP %{value:,.0f}<extra></extra>",
+                    )
+                ]
+            )
+            fig_pie_y.update_layout(
+                height=360,
+                showlegend=False,
+                paper_bgcolor="#ffffff",
+                plot_bgcolor="#ffffff",
+                margin=dict(l=0, r=0, t=0, b=0),
+                annotations=[
+                    dict(
+                        text=f"Total<br><b>{_money(total_ing)}</b>",
+                        showarrow=False,
+                        x=0.5,
+                        y=0.5,
+                        font=dict(size=14, color="#344055", family="Inter, Arial, sans-serif"),
+                    )
+                ],
+            )
+
+            legend_rows = []
+            for _, row in pie_df.iterrows():
+                year = int(row["anio_int"])
+                legend_rows.append(
+                    f"""
+                    <div class="donut-legend-row">
+                      <div><span class="year-dot" style="background:{color_for_year[year]}; margin-right:10px;"></span>{year}</div>
+                      <div>{_money(float(row["ingresos"]))}</div>
+                    </div>
+                    """
+                )
+            legend_html = f"""
+              <div>
+                <div class="donut-legend-title"><div>Año</div><div>Ingresos (CLP)</div></div>
+                {''.join(legend_rows)}
+              </div>
+            """
+
+            left_tbl, right_pie = st.columns([1.05, 0.88])
+            with left_tbl:
+                st.markdown(table_html, unsafe_allow_html=True)
+            with right_pie:
+                with st.container(border=True):
+                    st.markdown(
+                        """
+                        <div class="finance-toolbar"><span class="finance-tool">▣</span><span class="finance-tool">⛶</span><span class="finance-tool">⋮</span></div>
+                        <div class="finance-card-title">Distribución de ingresos por año <span class="finance-info">i</span></div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+                    donut_col, legend_col = st.columns([0.95, 0.75])
+                    with donut_col:
+                        st.plotly_chart(fig_pie_y, use_container_width=True, config={"displayModeBar": False})
+                    with legend_col:
+                        st.markdown(legend_html, unsafe_allow_html=True)
 
     if selected_section == "Ingresos V2.3":
         st.subheader("Ingresos — Análisis técnico")
