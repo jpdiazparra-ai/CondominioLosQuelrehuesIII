@@ -3180,7 +3180,262 @@ def run_streamlit():
                             "Ver detalle de parcela",
                         )
 
-            st.subheader("Detalle de GC pendientes por parcela")
+            st.markdown(
+                """
+                <style>
+                .gc-detail-head {
+                  display:flex;
+                  justify-content:space-between;
+                  align-items:flex-start;
+                  gap:20px;
+                  margin:34px 0 22px 0;
+                }
+                .gc-detail-title {
+                  color:#071326;
+                  font-size:25px;
+                  line-height:1.15;
+                  font-weight:900;
+                  margin:0 0 22px 0;
+                }
+                .gc-summary {
+                  display:flex;
+                  align-items:center;
+                  gap:18px;
+                }
+                .gc-summary-icon {
+                  width:58px;
+                  height:58px;
+                  border-radius:12px;
+                  display:grid;
+                  place-items:center;
+                  color:#8a3ffc;
+                  background:#eadcff;
+                  font-size:28px;
+                  font-weight:900;
+                }
+                .gc-summary-label {
+                  color:#667085;
+                  font-size:14px;
+                  font-weight:700;
+                }
+                .gc-summary-value {
+                  color:#071326;
+                  font-size:23px;
+                  line-height:1.1;
+                  font-weight:900;
+                  margin-top:5px;
+                }
+                .gc-summary-sub {
+                  color:#52647f;
+                  font-size:13px;
+                  font-weight:700;
+                  margin-top:7px;
+                }
+                .gc-detail-actions {
+                  display:flex;
+                  align-items:center;
+                  gap:12px;
+                  margin-top:8px;
+                }
+                .gc-search,
+                .gc-filter,
+                .gc-more {
+                  height:42px;
+                  border:1px solid #dfe7f1;
+                  border-radius:8px;
+                  background:#fff;
+                  display:flex;
+                  align-items:center;
+                  gap:10px;
+                  color:#667085;
+                  font-weight:800;
+                  box-shadow:0 4px 12px rgba(15,23,42,.04);
+                }
+                .gc-search { min-width:310px; padding:0 16px; justify-content:flex-start; }
+                .gc-filter { min-width:120px; padding:0 16px; justify-content:center; color:#263449; }
+                .gc-more { width:42px; justify-content:center; border-color:transparent; box-shadow:none; font-size:23px; }
+                .gc-layout {
+                  display:grid;
+                  grid-template-columns:1.18fr .82fr;
+                  gap:28px;
+                  margin-bottom:34px;
+                }
+                .gc-card {
+                  background:#fff;
+                  border:1px solid #e1e8f1;
+                  border-radius:10px;
+                  box-shadow:0 10px 24px rgba(15,23,42,.07);
+                  overflow:hidden;
+                }
+                .gc-table {
+                  width:100%;
+                  border-collapse:separate;
+                  border-spacing:0;
+                  color:#172033;
+                  font-size:13px;
+                }
+                .gc-table th {
+                  height:42px;
+                  background:#f7f9fc;
+                  color:#263449;
+                  text-align:left;
+                  font-weight:900;
+                  padding:0 14px;
+                  border-bottom:1px solid #e2e8f0;
+                  border-right:1px solid #e8edf4;
+                  white-space:nowrap;
+                }
+                .gc-table td {
+                  height:36px;
+                  padding:0 14px;
+                  border-bottom:1px solid #eef2f7;
+                  border-right:1px solid #eef2f7;
+                  font-weight:800;
+                  white-space:nowrap;
+                }
+                .gc-table tr:hover td { background:#f8fbff; }
+                .gc-num { text-align:right; }
+                .gc-debt { color:#e12626; }
+                .gc-percent {
+                  display:grid;
+                  grid-template-columns:42px minmax(90px,1fr);
+                  align-items:center;
+                  gap:10px;
+                }
+                .gc-bar {
+                  height:10px;
+                  border-radius:999px;
+                  background:#eceff3;
+                  overflow:hidden;
+                }
+                .gc-bar-fill {
+                  height:100%;
+                  min-width:4px;
+                  border-radius:999px;
+                  background:linear-gradient(90deg,#c8282d 0%,#7a1e1e 100%);
+                }
+                .calendar-icon {
+                  float:right;
+                  color:#334a68;
+                  font-size:14px;
+                  margin-left:10px;
+                }
+                .gc-footer {
+                  min-height:66px;
+                  padding:0 18px;
+                  display:flex;
+                  justify-content:space-between;
+                  align-items:center;
+                  color:#667085;
+                  font-size:12px;
+                  font-weight:800;
+                }
+                .gc-page-controls { display:flex; align-items:center; gap:9px; }
+                .gc-select,
+                .gc-page {
+                  min-height:34px;
+                  border:1px solid #dfe7f1;
+                  border-radius:8px;
+                  display:flex;
+                  align-items:center;
+                  justify-content:center;
+                  gap:10px;
+                  padding:0 12px;
+                  background:#fff;
+                  color:#263449;
+                }
+                .gc-page.active {
+                  background:#0f6bff;
+                  color:#fff;
+                  border-color:#0f6bff;
+                }
+                .gc-pie-card {
+                  background:#fff;
+                  border:1px solid #e1e8f1;
+                  border-radius:10px;
+                  box-shadow:0 10px 24px rgba(15,23,42,.07);
+                  padding:22px 24px 24px 24px;
+                }
+                .gc-pie-head {
+                  display:flex;
+                  justify-content:space-between;
+                  align-items:center;
+                  margin-bottom:10px;
+                }
+                .gc-pie-title {
+                  color:#071326;
+                  font-size:18px;
+                  font-weight:900;
+                }
+                .gc-pie-actions {
+                  display:flex;
+                  gap:9px;
+                }
+                .gc-pie-action {
+                  width:34px;
+                  height:34px;
+                  border:1px solid #dfe7f1;
+                  border-radius:8px;
+                  display:grid;
+                  place-items:center;
+                  color:#263449;
+                  font-weight:900;
+                  background:#fff;
+                }
+                .top-debtor {
+                  display:grid;
+                  grid-template-columns:58px minmax(0,1fr);
+                  gap:18px;
+                  align-items:center;
+                  border:1px solid #e1e8f1;
+                  border-radius:10px;
+                  padding:16px;
+                  margin-top:8px;
+                  background:#fff;
+                }
+                .top-debtor-icon {
+                  width:58px;
+                  height:58px;
+                  border-radius:12px;
+                  display:grid;
+                  place-items:center;
+                  color:#0f6bff;
+                  background:#e4efff;
+                  font-size:30px;
+                  font-weight:900;
+                }
+                .top-debtor-label {
+                  color:#667085;
+                  font-weight:700;
+                  font-size:13px;
+                }
+                .top-debtor-name {
+                  color:#071326;
+                  font-weight:900;
+                  font-size:18px;
+                  margin-top:4px;
+                }
+                .top-debtor-sub {
+                  color:#168a57;
+                  font-weight:900;
+                  font-size:13px;
+                  margin-top:6px;
+                }
+                .gc-detail-link {
+                  display:flex;
+                  justify-content:space-between;
+                  color:#0f6bff;
+                  font-weight:900;
+                  font-size:15px;
+                  margin-top:28px;
+                }
+                @media(max-width:1200px){.gc-layout{grid-template-columns:1fr;}.gc-card{overflow-x:auto;}}
+                @media(max-width:780px){.gc-detail-head{display:block;}.gc-detail-actions{flex-wrap:wrap}.gc-search{min-width:100%;}}
+                </style>
+                """,
+                unsafe_allow_html=True,
+            )
+
             tabla_prop = tabla_show[["Parcela", "Propietario", "Total por pagar"]].copy()
             tabla_prop = tabla_prop.rename(columns={"Total por pagar": "Pendiente"})
 
@@ -3213,59 +3468,149 @@ def run_streamlit():
             tabla_prop = tabla_prop[["Parcela", "Propietario", "Pendiente", "% Pendiente", "Fecha"]]
             tabla_prop = tabla_prop.rename(columns={"Fecha": "Último pago"})
 
-            left_col, right_col = st.columns([1.2, 1])
-            with left_col:
-                styler_prop = (
-                    tabla_prop.style
-                    .format({"Pendiente": "${:,.0f}", "% Pendiente": "{:.1f}%", "Último pago": "{:%d-%m-%Y}"})
-                    .apply(
-                        lambda s: ["background-color: #4A1B1B; color:#F8FAFC;" if v > 0 else "" for v in s]
-                        if s.name in ("Pendiente", "% Pendiente")
-                        else [""] * len(s)
-                    )
-                    .set_table_styles(
-                        [
-                            {"selector": "th", "props": "background:#0B1F2A;color:#F8FAFC;font-weight:600;"},
-                            {"selector": "th", "props": "padding:5px 8px;"},
-                            {"selector": "td", "props": "padding:5px 8px;"},
-                            {"selector": "tr:nth-child(even) td", "props": "background:#F4F7FA;"},
+            debt_count = int((tabla_prop["Pendiente"].fillna(0) > 0).sum()) if not tabla_prop.empty else 0
+            st.markdown(
+                f"""
+                <div class="gc-detail-head">
+                  <div>
+                    <h2 class="gc-detail-title">Detalle de GC pendientes por parcela</h2>
+                    <div class="gc-summary">
+                      <div class="gc-summary-icon">▱</div>
+                      <div>
+                        <div class="gc-summary-label">Total pendiente GC</div>
+                        <div class="gc-summary-value">{_fmt_money(total_pend_global)}</div>
+                        <div class="gc-summary-sub">{debt_count} parcelas con deuda</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="gc-detail-actions">
+                    <div class="gc-search">⌕ <span>Buscar por parcela o propietario...</span></div>
+                    <div class="gc-filter">≡ <span>Filtros</span></div>
+                    <div class="gc-more">⋮</div>
+                  </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+            def _fmt_gc_money(v) -> str:
+                try:
+                    return f"${float(v):,.0f}"
+                except Exception:
+                    return "$0"
+
+            def _fmt_date(v) -> str:
+                if pd.isna(v):
+                    return ""
+                try:
+                    return pd.to_datetime(v).strftime("%d-%m-%Y")
+                except Exception:
+                    return str(v)
+
+            table_rows = []
+            for _, row in tabla_prop.sort_values("Parcela").iterrows():
+                pendiente = float(row.get("Pendiente", 0) or 0)
+                pct = float(row.get("% Pendiente", 0) or 0)
+                bar_width = max(2, min(100, pct)) if pendiente > 0 else 0
+                deuda_class = " gc-debt" if pendiente > 0 else ""
+                table_rows.append(
+                    "<tr>"
+                    f"<td>{int(row['Parcela']) if pd.notna(row['Parcela']) else ''}</td>"
+                    f"<td>{html.escape(str(row.get('Propietario', '') or ''))}</td>"
+                    f"<td class=\"gc-num{deuda_class}\">{_fmt_gc_money(pendiente)}</td>"
+                    "<td>"
+                    f"<div class=\"gc-percent\"><span>{pct:.1f}%</span><span class=\"gc-bar\"><span class=\"gc-bar-fill\" style=\"width:{bar_width}%;\"></span></span></div>"
+                    "</td>"
+                    f"<td>{_fmt_date(row.get('Último pago'))}<span class=\"calendar-icon\">▣</span></td>"
+                    "</tr>"
+                )
+
+            table_html = (
+                "<div class=\"gc-card\">"
+                "<table class=\"gc-table\">"
+                "<thead><tr><th>Parcela ↕</th><th>Propietario</th><th class=\"gc-num\">Pendiente (CLP) ↕</th><th>% Pendiente ↕</th><th>Último pago</th></tr></thead>"
+                f"<tbody>{''.join(table_rows)}</tbody>"
+                "</table>"
+                "<div class=\"gc-footer\">"
+                f"<div>Mostrando 1 a {len(tabla_prop):,} de {len(tabla_prop):,} registros</div>"
+                "<div class=\"gc-page-controls\"><span>Filas por página</span><span class=\"gc-select\">20⌄</span><span class=\"gc-page\">‹ Anterior</span><span class=\"gc-page active\">1</span><span class=\"gc-page\">2</span><span class=\"gc-page\">Siguiente ›</span></div>"
+                "</div>"
+                "</div>"
+            )
+
+            pie_df = tabla_prop[tabla_prop["% Pendiente"] > 0].copy()
+            gc_colors_detail = ["#073f4a", "#0d7280", "#2d7a5b", "#338060", "#829bd5", "#b93a3a", "#0c6a83", "#1e9aac", "#5bbd8c", "#62bd97", "#dfe9f7", "#ed8580", "#000000"]
+            fig_pie = None
+            top_debtor_html = ""
+            if not pie_df.empty:
+                try:
+                    import plotly.graph_objects as go
+                except Exception:
+                    st.error("Falta Plotly para el gráfico avanzado. Instala con: pip install plotly")
+                else:
+                    pie_df = pie_df.sort_values("Pendiente", ascending=False)
+                    pie_df["Etiqueta"] = pie_df["Parcela"].astype(int).astype(str)
+                    pie_colors = [gc_colors_detail[i % len(gc_colors_detail)] for i in range(len(pie_df))]
+                    fig_pie = go.Figure(
+                        data=[
+                            go.Pie(
+                                labels=pie_df["Etiqueta"],
+                                values=pie_df["Pendiente"],
+                                hole=0.38,
+                                sort=False,
+                                marker=dict(colors=pie_colors, line=dict(color="rgba(255,255,255,.2)", width=1)),
+                                texttemplate="%{label}<br>%{percent}",
+                                textposition="inside",
+                                textfont=dict(color="white", size=12, family="Inter, Arial, sans-serif"),
+                                hovertemplate="Parcela %{label}<br>Pendiente CLP %{value:,.0f}<br>%{percent}<extra></extra>",
+                            )
                         ]
                     )
-                )
-                st.dataframe(styler_prop, use_container_width=True, height=800, hide_index=True)
+                    fig_pie.update_layout(
+                        height=430,
+                        showlegend=True,
+                        legend=dict(title="Parcela", orientation="v", x=1.02, y=0.86, font=dict(size=11)),
+                        margin=dict(l=0, r=72, t=6, b=0),
+                        paper_bgcolor="#ffffff",
+                        plot_bgcolor="#ffffff",
+                        annotations=[
+                            dict(
+                                text=f"Total<br><b>{_fmt_gc_money(total_pend_global)}</b><br>100%",
+                                showarrow=False,
+                                x=0.5,
+                                y=0.5,
+                                font=dict(size=14, color="#172033", family="Inter, Arial, sans-serif"),
+                            )
+                        ],
+                    )
+                    top = pie_df.iloc[0]
+                    top_pct = float(top["% Pendiente"])
+                    top_debtor_html = (
+                        "<div class=\"top-debtor\">"
+                        "<div class=\"top-debtor-icon\">◔</div>"
+                        "<div>"
+                        "<div class=\"top-debtor-label\">Parcela con mayor deuda</div>"
+                        f"<div class=\"top-debtor-name\">{int(top['Parcela'])} - {html.escape(str(top.get('Propietario', '') or ''))}</div>"
+                        f"<div class=\"top-debtor-sub\">{_fmt_gc_money(float(top['Pendiente']))} ({top_pct:.1f}% del total)</div>"
+                        "</div>"
+                        "</div>"
+                    )
 
-            with right_col:
-                pie_df = tabla_prop[tabla_prop["% Pendiente"] > 0].copy()
-                if not pie_df.empty:
-                    try:
-                        import plotly.express as px
-                    except Exception:
-                        st.error("Falta Plotly para el gráfico avanzado. Instala con: pip install plotly")
+            detail_left, detail_right = st.columns([1.18, 0.82], gap="large")
+            with detail_left:
+                st.markdown(table_html, unsafe_allow_html=True)
+            with detail_right:
+                with st.container(border=True):
+                    st.markdown(
+                        "<div class=\"gc-pie-head\"><div class=\"gc-pie-title\">Distribución % deuda por parcela</div><div class=\"gc-pie-actions\"><span class=\"gc-pie-action\">▣</span><span class=\"gc-pie-action\">⛶</span><span class=\"gc-pie-action\">⋮</span></div></div>",
+                        unsafe_allow_html=True,
+                    )
+                    if fig_pie is not None:
+                        st.plotly_chart(fig_pie, use_container_width=True, config={"displayModeBar": False})
+                        st.markdown(top_debtor_html, unsafe_allow_html=True)
+                        st.markdown("<div class=\"gc-detail-link\"><span>Ver detalle de parcelas</span><span>›</span></div>", unsafe_allow_html=True)
                     else:
-                        pie_df["Etiqueta"] = pie_df["Parcela"].astype(int).astype(str)
-                        fig_pie = px.pie(
-                            pie_df,
-                            names="Etiqueta",
-                            values="% Pendiente",
-                            title="Distribución % deuda por parcela",
-                            hole=0.35,
-                            color_discrete_sequence=["#0B1F2A", "#1F4F5B", "#2C5B4A", "#3A6B5A", "#8DA2C8", "#A4463F"],
-                        )
-                        fig_pie.update_layout(legend_title_text="Parcela")
-                        fig_pie.update_traces(
-                            textinfo="label+percent",
-                            textposition="auto",
-                            texttemplate="%{label}<br>%{percent}",
-                            automargin=True,
-                            hovertemplate="Parcela %{label}<br>Participación %{percent}<extra></extra>",
-                        )
-                        fig_pie.update_layout(
-                            height=520,
-                            margin=dict(l=20, r=20, t=40, b=80),
-                        )
-                        st.plotly_chart(fig_pie, use_container_width=True)
-                else:
-                    st.info("No hay pendientes positivos para graficar.")
+                        st.info("No hay pendientes positivos para graficar.")
 
             st.subheader("Detalle de abonos por parcela")
             cols_ing_det = list(df_ing_o.columns)
