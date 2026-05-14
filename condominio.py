@@ -3310,12 +3310,15 @@ def run_streamlit():
                   gap:7px;
                 }
                 .gc-bar {
+                  display:block;
+                  width:100%;
                   height:7px;
                   border-radius:999px;
                   background:#eceff3;
                   overflow:hidden;
                 }
                 .gc-bar-fill {
+                  display:block;
                   height:100%;
                   min-width:4px;
                   border-radius:999px;
