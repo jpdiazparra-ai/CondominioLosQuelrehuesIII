@@ -1878,7 +1878,28 @@ def run_streamlit():
                         st.markdown(legend_html, unsafe_allow_html=True)
 
     if selected_section == "Ingresos V2.3":
-        st.subheader("Ingresos — Análisis técnico")
+        st.markdown(
+            """
+            <style>
+            .ing-compact-title {
+              color:#071326;
+              font-size:17px;
+              line-height:1.15;
+              font-weight:900;
+              margin:0 0 14px 0;
+            }
+            .ing-compact-section {
+              color:#071326;
+              font-size:14px;
+              line-height:1.2;
+              font-weight:900;
+              margin:18px 0 10px 0;
+            }
+            </style>
+            <h1 class="ing-compact-title">Ingresos — Análisis técnico</h1>
+            """,
+            unsafe_allow_html=True,
+        )
         with st.spinner("Cargando ingresos..."):
             df_ing = _load(INGRESOS_CSV_URL, CACHE_VERSION, {"fecha", "parcela", "abono"})
 
@@ -2046,6 +2067,7 @@ def run_streamlit():
                 hovertemplate="Parcela %{x}<br>Monto CLP %{y:,.0f}<extra></extra>",
             )
             fig.update_layout(hovermode="x unified", height=520)
+            fig.update_layout(title_font_size=11)
             fig.update_xaxes(type="category", tickmode="linear", dtick=1)
             st.plotly_chart(fig, use_container_width=True)
 
@@ -2063,10 +2085,10 @@ def run_streamlit():
                     labels={"periodo": "Periodo", "monto_norm": "Ingreso (CLP)"},
                     color_discrete_sequence=muted_palette,
                 )
-                fig_p.update_layout(hovermode="x unified", height=420)
+                fig_p.update_layout(hovermode="x unified", height=420, title_font_size=11)
                 st.plotly_chart(fig_p, use_container_width=True)
 
-        st.subheader("Detalle de ingresos (filtrado)")
+        st.markdown('<h2 class="ing-compact-section">Detalle de ingresos (filtrado)</h2>', unsafe_allow_html=True)
         st.dataframe(filt, use_container_width=True)
 
     if selected_section == "Costos":
