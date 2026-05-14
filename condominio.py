@@ -3533,9 +3533,11 @@ def run_streamlit():
                     .gc-table tr:hover td { background:#f8fbff; }
                     .gc-num { text-align:right; }
                     .gc-debt { color:#e12626; }
+                    .gc-favor { color:#168a57; }
+                    .gc-neutral { color:#52647f; }
                     .gc-percent {
                       display:grid;
-                      grid-template-columns:42px minmax(90px,1fr);
+                      grid-template-columns:74px minmax(90px,1fr);
                       align-items:center;
                       gap:7px;
                     }
@@ -3553,6 +3555,9 @@ def run_streamlit():
                       min-width:4px;
                       border-radius:999px;
                       background:linear-gradient(90deg,#c8282d 0%,#7a1e1e 100%);
+                    }
+                    .gc-bar-fill.gc-bar-favor {
+                      background:linear-gradient(90deg,#2bbf78 0%,#0f7a4d 100%);
                     }
                     .calendar-icon {
                       float:right;
@@ -3672,14 +3677,23 @@ def run_streamlit():
                     unsafe_allow_html=True,
                 )
 
-                tabla_prop = tabla_show[["Parcela", "Propietario", "Total por pagar"]].copy()
-                tabla_prop = tabla_prop.rename(columns={"Total por pagar": "Pendiente"})
+                tabla_prop = tabla_show[["Parcela", "Propietario", "Total por pagar", "GC por anticipado"]].copy()
+                tabla_prop = tabla_prop.rename(columns={"Total por pagar": "Pendiente", "GC por anticipado": "Saldo a favor"})
 
                 total_pend_global = float(tabla_prop["Pendiente"].sum()) if not tabla_prop.empty else 0.0
+                total_favor_global = float(tabla_prop["Saldo a favor"].sum()) if "Saldo a favor" in tabla_prop.columns and not tabla_prop.empty else 0.0
                 if total_pend_global > 0:
                     tabla_prop["pct_pendiente"] = (tabla_prop["Pendiente"] / total_pend_global) * 100
                 else:
                     tabla_prop["pct_pendiente"] = 0.0
+                if total_favor_global > 0:
+                    tabla_prop["pct_favor"] = (tabla_prop["Saldo a favor"] / total_favor_global) * 100
+                else:
+                    tabla_prop["pct_favor"] = 0.0
+                tabla_prop["pct_estado"] = tabla_prop["pct_pendiente"].where(
+                    tabla_prop["Pendiente"] > 0,
+                    tabla_prop["pct_favor"].where(tabla_prop["Saldo a favor"] > 0, 0.0),
+                )
                 cols_ing_det = list(df_ing_o.columns)
                 col_fecha_det = _pick_col(cols_ing_det, ["fecha"])
                 col_parc_det = _pick_col(cols_ing_det, ["parcela"])
@@ -3695,8 +3709,8 @@ def run_streamlit():
                     tabla_prop = tabla_prop.merge(ult, on="Parcela", how="left")
                 else:
                     tabla_prop["Fecha"] = pd.NaT
-                tabla_prop = tabla_prop.rename(columns={"pct_pendiente": "% Pendiente"})
-                tabla_prop = tabla_prop[["Parcela", "Propietario", "Pendiente", "% Pendiente", "Fecha"]]
+                tabla_prop = tabla_prop.rename(columns={"pct_pendiente": "% Pendiente", "pct_estado": "% Estado"})
+                tabla_prop = tabla_prop[["Parcela", "Propietario", "Pendiente", "Saldo a favor", "% Pendiente", "% Estado", "Fecha"]]
                 tabla_prop = tabla_prop.rename(columns={"Fecha": "Último pago"})
 
                 debt_count = int((tabla_prop["Pendiente"].fillna(0) > 0).sum()) if not tabla_prop.empty else 0
@@ -3769,16 +3783,33 @@ def run_streamlit():
                 table_rows = []
                 for _, row in tabla_prop_page.iterrows():
                     pendiente = float(row.get("Pendiente", 0) or 0)
-                    pct = float(row.get("% Pendiente", 0) or 0)
-                    bar_width = max(2, min(100, pct)) if pendiente > 0 else 0
-                    deuda_class = " gc-debt" if pendiente > 0 else ""
+                    favor = float(row.get("Saldo a favor", 0) or 0)
+                    pct = float(row.get("% Estado", 0) or 0)
+                    if pendiente > 0:
+                        status_text = f"Debe {_fmt_gc_money(pendiente)}"
+                        status_class = " gc-debt"
+                        pct_text = f"{pct:.1f}% deuda"
+                        bar_class = ""
+                        bar_width = max(2, min(100, pct))
+                    elif favor > 0:
+                        status_text = f"A favor {_fmt_gc_money(favor)}"
+                        status_class = " gc-favor"
+                        pct_text = f"{pct:.1f}% favor"
+                        bar_class = " gc-bar-favor"
+                        bar_width = max(2, min(100, pct))
+                    else:
+                        status_text = "Al día"
+                        status_class = " gc-neutral"
+                        pct_text = "0.0%"
+                        bar_class = ""
+                        bar_width = 0
                     table_rows.append(
                         "<tr>"
                         f"<td>{int(row['Parcela']) if pd.notna(row['Parcela']) else ''}</td>"
                         f"<td>{html.escape(str(row.get('Propietario', '') or ''))}</td>"
-                        f"<td class=\"gc-num{deuda_class}\">{_fmt_gc_money(pendiente)}</td>"
+                        f"<td class=\"gc-num{status_class}\">{status_text}</td>"
                         "<td>"
-                        f"<div class=\"gc-percent\"><span>{pct:.1f}%</span><span class=\"gc-bar\"><span class=\"gc-bar-fill\" style=\"width:{bar_width}%;\"></span></span></div>"
+                        f"<div class=\"gc-percent\"><span>{pct_text}</span><span class=\"gc-bar\"><span class=\"gc-bar-fill{bar_class}\" style=\"width:{bar_width}%;\"></span></span></div>"
                         "</td>"
                         f"<td>{_fmt_date(row.get('Último pago'))}<span class=\"calendar-icon\">▣</span></td>"
                         "</tr>"
@@ -3788,7 +3819,7 @@ def run_streamlit():
                     "<div class=\"gc-card\">"
                     "<div class=\"gc-card-head\"><h2 class=\"gc-detail-title\">Estado de pendientes por parcela <span class=\"gc-card-info\">i</span></h2></div>"
                     "<table class=\"gc-table\">"
-                    "<thead><tr><th>Parcela</th><th>Propietario</th><th class=\"gc-num\">Pendiente (CLP)</th><th>% Pendiente</th><th>Último pago</th></tr></thead>"
+                    "<thead><tr><th>Parcela</th><th>Propietario</th><th class=\"gc-num\">Estado saldo (CLP)</th><th>Estado %</th><th>Último pago</th></tr></thead>"
                     f"<tbody>{''.join(table_rows)}</tbody>"
                     "</table>"
                     "</div>"
