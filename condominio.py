@@ -1643,7 +1643,8 @@ def run_streamlit():
               font-size:22px;
               line-height:1.2;
               font-weight:900;
-              margin:18px 0 10px 0;
+              margin:18px 0 10px 0 !important;
+              padding:0 !important;
             }
             @media (max-width: 1100px) {
               .summary-grid,
@@ -1654,7 +1655,7 @@ def run_streamlit():
             unsafe_allow_html=True,
         )
         st.markdown(
-            '<div class="finance-section-title">Resumen económico del condominio</div>',
+            '<h2 class="finance-section-title">Resumen económico del condominio</h2>',
             unsafe_allow_html=True,
         )
 
