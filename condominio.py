@@ -2939,25 +2939,25 @@ def run_streamlit():
                   display:flex;
                   justify-content:space-between;
                   align-items:flex-start;
-                  gap:12px;
-                  margin-bottom:10px;
+                  gap:8px;
+                  margin-bottom:6px;
                 }
                 .dist-title {
                   color:#172033;
-                  font-size:21px;
+                  font-size:15px;
                   line-height:1.2;
                   font-weight:900;
                   margin:0;
                 }
                 .dist-actions {
                   display:flex;
-                  gap:8px;
+                  gap:5px;
                 }
                 .dist-action {
-                  width:36px;
-                  height:36px;
+                  width:25px;
+                  height:25px;
                   border:1px solid #dfe7f1;
-                  border-radius:9px;
+                  border-radius:7px;
                   display:grid;
                   place-items:center;
                   color:#253247;
@@ -2969,64 +2969,64 @@ def run_streamlit():
                   width:39%;
                   height:1px;
                   background:#dfe6ef;
-                  margin:10px 0 18px 0;
+                  margin:7px 0 12px 0;
                 }
                 .dist-summary {
                   display:flex;
                   align-items:center;
-                  gap:18px;
-                  margin-bottom:12px;
+                  gap:12px;
+                  margin-bottom:8px;
                 }
                 .dist-icon {
-                  width:66px;
-                  height:66px;
-                  border-radius:14px;
+                  width:46px;
+                  height:46px;
+                  border-radius:11px;
                   display:grid;
                   place-items:center;
-                  font-size:30px;
+                  font-size:21px;
                   font-weight:900;
                 }
                 .dist-label {
                   color:#68738a;
-                  font-size:14px;
+                  font-size:10px;
                   font-weight:700;
                 }
                 .dist-value {
                   color:#172033;
-                  font-size:23px;
+                  font-size:16px;
                   font-weight:900;
-                  margin-top:4px;
+                  margin-top:2px;
                 }
                 .dist-count {
-                  font-size:13px;
+                  font-size:10px;
                   font-weight:900;
-                  margin-top:8px;
+                  margin-top:5px;
                 }
                 .dist-table {
                   width:100%;
                   border-collapse:collapse;
-                  margin-top:4px;
+                  margin-top:2px;
                   color:#172033;
-                  font-size:13px;
+                  font-size:10px;
                 }
                 .dist-table th {
                   color:#667085;
                   font-weight:700;
                   text-align:left;
-                  padding:9px 0;
+                  padding:6px 0;
                   border-bottom:1px solid #dfe6ef;
                 }
                 .dist-table td {
-                  padding:8px 0;
+                  padding:5px 0;
                   border-bottom:1px solid #e5ebf3;
                   font-weight:800;
                 }
                 .dist-dot {
-                  width:13px;
-                  height:13px;
+                  width:9px;
+                  height:9px;
                   display:inline-block;
                   border-radius:50%;
-                  margin-right:12px;
+                  margin-right:8px;
                   vertical-align:middle;
                 }
                 .dist-footer {
@@ -3035,8 +3035,8 @@ def run_streamlit():
                   align-items:center;
                   color:#0f6bff;
                   font-weight:900;
-                  font-size:16px;
-                  margin-top:26px;
+                  font-size:11px;
+                  margin-top:16px;
                 }
                 </style>
                 """,
@@ -3102,13 +3102,13 @@ def run_streamlit():
                                 marker=dict(colors=color_seq, line=dict(color="rgba(255,255,255,.18)", width=1)),
                                 texttemplate="%{label}<br>%{percent}",
                                 textposition="inside",
-                                textfont=dict(color="white", size=13, family="Inter, Arial, sans-serif"),
+                                textfont=dict(color="white", size=10, family="Inter, Arial, sans-serif"),
                                 hovertemplate="Parcela %{label}<br>Monto CLP %{value:,.0f}<br>%{percent}<extra></extra>",
                             )
                         ]
                     )
                     fig.update_layout(
-                        height=350,
+                        height=245,
                         showlegend=False,
                         margin=dict(l=0, r=0, t=2, b=2),
                         paper_bgcolor="#ffffff",
@@ -3119,7 +3119,7 @@ def run_streamlit():
                                 showarrow=False,
                                 x=0.5,
                                 y=0.5,
-                                font=dict(size=14, color="#667085", family="Inter, Arial, sans-serif"),
+                                font=dict(size=10, color="#667085", family="Inter, Arial, sans-serif"),
                             )
                         ],
                     )
