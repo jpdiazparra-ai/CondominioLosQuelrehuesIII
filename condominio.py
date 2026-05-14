@@ -1541,14 +1541,14 @@ def run_streamlit():
               border:1px solid #e6edf5;
               border-radius:14px;
               box-shadow:0 8px 22px rgba(15,23,42,.07);
-              padding:18px 22px 14px 22px;
-              margin:18px 0 22px 0;
+              padding:12px 16px 10px 16px;
+              margin:8px 0 10px 0;
             }
             .finance-card-title {
               color:#172033;
-              font-size:20px;
+              font-size:17px;
               font-weight:900;
-              margin:0 0 12px 0;
+              margin:0 0 8px 0;
               display:flex;
               align-items:center;
               gap:10px;
@@ -1567,19 +1567,26 @@ def run_streamlit():
             .finance-toolbar {
               float:right;
               display:flex;
-              gap:8px;
+              gap:6px;
               color:#344055;
               margin-top:-4px;
             }
             .finance-tool {
-              min-width:32px;
-              height:32px;
+              min-width:28px;
+              height:28px;
               display:grid;
               place-items:center;
               border:1px solid #e1e8f1;
               border-radius:8px;
               box-shadow:0 2px 7px rgba(15,23,42,.05);
               font-weight:800;
+            }
+            div[data-testid="stHorizontalBlock"] > div[data-testid="column"] [data-testid="stVerticalBlockBorderWrapper"] {
+              border-radius:14px;
+              box-shadow:0 8px 22px rgba(15,23,42,.07);
+            }
+            div[data-testid="stHorizontalBlock"] > div[data-testid="column"] [data-testid="stVerticalBlockBorderWrapper"] > div {
+              padding:12px 16px 10px 16px;
             }
             .summary-grid {
               display:grid;
@@ -1591,12 +1598,12 @@ def run_streamlit():
               border:1px solid #e3e9f2;
               border-radius:10px;
               overflow:hidden;
-              margin-top:12px;
+              margin-top:8px;
             }
             .year-table {
               width:100%;
               border-collapse:collapse;
-              font-size:14px;
+              font-size:12px;
               color:#182236;
             }
             .year-table th {
@@ -1604,19 +1611,19 @@ def run_streamlit():
               color:#59657a;
               font-weight:700;
               text-align:left;
-              padding:12px 14px;
+              padding:8px 11px;
               border-bottom:1px solid #e3e9f2;
             }
             .year-table td {
-              padding:11px 14px;
+              padding:7px 11px;
               border-bottom:1px solid #e8edf4;
             }
             .year-dot {
-              width:11px;
-              height:11px;
+              width:9px;
+              height:9px;
               border-radius:999px;
               display:inline-block;
-              margin-right:20px;
+              margin-right:14px;
               vertical-align:middle;
             }
             .net-negative { color:#e12626; }
@@ -1635,14 +1642,14 @@ def run_streamlit():
             }
             .donut-legend-title {
               color:#59657a;
-              font-size:13px;
+              font-size:12px;
               font-weight:800;
-              margin-bottom:8px;
+              margin-bottom:5px;
             }
             .donut-legend-row {
               color:#172033;
-              font-size:14px;
-              padding:8px 0;
+              font-size:12px;
+              padding:5px 0;
               border-bottom:1px solid #e8edf4;
             }
             @media (max-width: 1100px) {
@@ -1689,7 +1696,7 @@ def run_streamlit():
                             marker=dict(color=series_colors[label], line=dict(width=0)),
                             text=data[col].map(_money),
                             textposition="outside",
-                            textfont=dict(color="#172033", size=11, family="Inter, Arial, sans-serif"),
+                            textfont=dict(color="#172033", size=9, family="Inter, Arial, sans-serif"),
                             hovertemplate=f"{label}<br>Año %{{x}}<br>%{{y:,.0f}} CLP<extra></extra>",
                             cliponaxis=False,
                         )
@@ -1699,27 +1706,27 @@ def run_streamlit():
                     barmode="group",
                     bargap=0.32,
                     bargroupgap=0.12,
-                    height=340,
+                    height=250,
                     plot_bgcolor="#ffffff",
                     paper_bgcolor="#ffffff",
-                    font=dict(family="Inter, Arial, sans-serif", color="#536078", size=13),
-                    margin=dict(l=48, r=22, t=18, b=54),
+                    font=dict(family="Inter, Arial, sans-serif", color="#536078", size=11),
+                    margin=dict(l=42, r=12, t=14, b=42),
                     legend=dict(
                         orientation="h",
                         yanchor="bottom",
-                        y=1.04,
+                        y=1.03,
                         xanchor="left",
                         x=0,
                         title_text="",
-                        font=dict(size=13, color="#334155"),
+                        font=dict(size=11, color="#334155"),
                     ),
                     hovermode="x unified",
                     title=None,
                 )
                 fig.update_xaxes(
                     title_text="Año",
-                    title_font=dict(size=15, color="#59657a"),
-                    tickfont=dict(size=13, color="#68738a"),
+                    title_font=dict(size=12, color="#59657a"),
+                    tickfont=dict(size=11, color="#68738a"),
                     showline=True,
                     linecolor="#d9e1eb",
                     showgrid=False,
@@ -1727,36 +1734,39 @@ def run_streamlit():
                 )
                 fig.update_yaxes(
                     title_text="Monto (CLP)",
-                    title_font=dict(size=14, color="#59657a"),
+                    title_font=dict(size=12, color="#59657a"),
                     tickvals=ticks,
                     ticktext=ticktext,
-                    tickfont=dict(size=12, color="#68738a"),
+                    tickfont=dict(size=10, color="#68738a"),
                     gridcolor="#dfe6ef",
                     griddash="dot",
                     zeroline=True,
                     zerolinecolor="#d1d9e4",
-                    range=[min(ticks) - 350_000, max(ticks) + 500_000],
+                    range=[min(ticks) - 300_000, max(ticks) + 420_000],
                 )
                 return fig
 
             df_y_cum = df_y.copy()
             df_y_cum[["ingresos", "costos", "neto"]] = df_y_cum[["ingresos", "costos", "neto"]].cumsum()
 
-            for chart_title, chart_data, tools in [
+            chart_specs = [
                 ("Ingresos, Costos y Neto — Acumulado por año", df_y_cum, "↗ ▥ ▣ ⛶ ⋮"),
                 ("Ingresos, Costos y Neto — Totales por año", df_y, "↗ ▥ ▣ ⛶ ⋮"),
-            ]:
-                with st.container(border=True):
-                    st.markdown(
-                        f"""
-                        <div class="finance-toolbar">
-                          {''.join(f'<span class="finance-tool">{t}</span>' for t in tools.split())}
-                        </div>
-                        <div class="finance-card-title">{html.escape(chart_title)} <span class="finance-info">i</span></div>
-                        """,
-                        unsafe_allow_html=True,
-                    )
-                    st.plotly_chart(_make_year_bars(chart_data, chart_title), use_container_width=True, config={"displayModeBar": False})
+            ]
+            chart_cols = st.columns([1, 1], gap="medium")
+            for chart_col, (chart_title, chart_data, tools) in zip(chart_cols, chart_specs):
+                with chart_col:
+                    with st.container(border=True):
+                        st.markdown(
+                            f"""
+                            <div class="finance-toolbar">
+                              {''.join(f'<span class="finance-tool">{t}</span>' for t in tools.split())}
+                            </div>
+                            <div class="finance-card-title">{html.escape(chart_title)} <span class="finance-info">i</span></div>
+                            """,
+                            unsafe_allow_html=True,
+                        )
+                        st.plotly_chart(_make_year_bars(chart_data, chart_title), use_container_width=True, config={"displayModeBar": False})
 
             year_colors = {
                 2025: "#073f4a",
@@ -1817,7 +1827,7 @@ def run_streamlit():
                 ]
             )
             fig_pie_y.update_layout(
-                height=360,
+                height=250,
                 showlegend=False,
                 paper_bgcolor="#ffffff",
                 plot_bgcolor="#ffffff",
