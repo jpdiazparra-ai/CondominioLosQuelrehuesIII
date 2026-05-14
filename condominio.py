@@ -2070,7 +2070,6 @@ def run_streamlit():
         st.dataframe(filt, use_container_width=True)
 
     if selected_section == "Costos":
-        st.subheader("Costos — Análisis técnico")
         with st.spinner("Cargando costos..."):
             df_cost = _load(COSTOS_CSV_URL, CACHE_VERSION, {"monto", "proveedor", "cc"})
 
@@ -2080,6 +2079,8 @@ def run_streamlit():
         col_cc = _pick_col(cols_cost, ["cc", "categoria", "rubro"])
         col_ccc = _pick_col(cols_cost, ["ccc", "subcategoria"])
         col_prov = _pick_col(cols_cost, ["proveedor"])
+        col_detalle = _pick_col(cols_cost, ["detalle", "detalle_trabajo", "trabajo", "descripcion", "glosa", "concepto"])
+        col_pago = _pick_col(cols_cost, ["forma_de_pago", "forma pago", "medio_pago", "medio", "pago"])
 
         if not col_monto:
             st.error("No se encontró columna de monto en Costos.")
@@ -2111,55 +2112,134 @@ def run_streamlit():
         n_reg = int(len(filt))
         avg_mensual = float(filt.groupby("periodo")["monto_norm"].sum().mean()) if "periodo" in filt.columns and not filt.empty else 0.0
         top_prov = (
-            filt.groupby(col_prov)["monto_norm"].sum().sort_values(ascending=True).index[0]
+            filt.groupby(col_prov)["monto_norm"].sum().abs().sort_values(ascending=False).index[0]
             if col_prov and not filt.empty else "-"
         )
         top_cat = (
-            filt.groupby(col_cc)["monto_norm"].sum().sort_values(ascending=True).index[0]
+            filt.groupby(col_cc)["monto_norm"].sum().abs().sort_values(ascending=False).index[0]
             if col_cc and not filt.empty else "-"
         )
+
+        def _fmt_cost(v: float) -> str:
+            try:
+                value = float(v)
+            except Exception:
+                value = 0.0
+            sign = "-" if value < 0 else ""
+            return f"{sign}${abs(value):,.0f}"
+
+        def _fmt_cost_short(v: float) -> str:
+            try:
+                value = float(v)
+            except Exception:
+                value = 0.0
+            sign = "-" if value < 0 else ""
+            abs_v = abs(value)
+            if abs_v >= 1_000_000:
+                return f"{sign}${abs_v / 1_000_000:.2f}M"
+            if abs_v >= 1_000:
+                return f"{sign}${abs_v / 1_000:.0f}K"
+            return f"{sign}${abs_v:,.0f}"
+
+        def _fmt_date_cost(v) -> str:
+            if pd.isna(v):
+                return ""
+            try:
+                return pd.to_datetime(v).strftime("%Y-%m-%d")
+            except Exception:
+                return str(v)
+
+        def _clip_label(value: object, max_len: int = 22) -> str:
+            text = str(value or "-").strip()
+            return text if len(text) <= max_len else text[: max_len - 1] + "…"
 
         st.markdown(
             """
             <style>
-            .kpi-grid-3 {display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin:8px 0 18px 0;}
-            .kpi-card {background:#fff;border:1px solid #E2E8F0;border-radius:16px;padding:18px 20px;box-shadow:0 2px 12px rgba(15,23,42,0.06);position:relative;}
-            .kpi-card:before {content:"";position:absolute;left:0;top:0;height:100%;width:6px;border-radius:16px 0 0 16px;}
-            .kpi-title {font-size:12px;letter-spacing:0.08em;color:#6B7280;font-weight:700;}
-            .kpi-value {font-size:24px;font-weight:800;margin-top:6px;}
-            .kpi-sub {font-size:12px;color:#94A3B8;margin-top:6px;}
-            .kpi-navy:before {background:#0B1F2A;}
-            .kpi-red:before {background:#EF4444;}
-            .kpi-green:before {background:#22C55E;}
-            .kpi-teal:before {background:#2C5B4A;}
-            @media (max-width: 1100px){.kpi-grid-3{grid-template-columns:repeat(2,1fr);}}
-            @media (max-width: 700px){.kpi-grid-3{grid-template-columns:1fr;}}
+            .cost-page-head { margin:0 0 18px 0; }
+            .cost-page-title { color:#071326; font-size:22px; line-height:1.15; font-weight:900; margin:0; }
+            .cost-section-title { color:#071326; font-size:15px; font-weight:900; margin:18px 0 12px 0; }
+            .cost-kpi-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:18px; margin:0 0 20px 0; }
+            .cost-kpi-card {
+              background:#fff; border:1px solid #e1e8f1; border-radius:10px; min-height:118px;
+              box-shadow:0 8px 22px rgba(15,23,42,.06); padding:19px 20px; display:grid;
+              grid-template-columns:54px minmax(0,1fr); gap:15px; align-items:center;
+            }
+            .cost-kpi-icon { width:52px; height:52px; border-radius:13px; display:grid; place-items:center; font-size:26px; font-weight:900; }
+            .cost-kpi-label { color:#52647f; font-size:12px; font-weight:800; margin-bottom:8px; }
+            .cost-kpi-value { color:#071326; font-size:21px; line-height:1.2; font-weight:900; overflow-wrap:anywhere; }
+            .cost-kpi-sub { color:#667085; font-size:11px; font-weight:700; margin-top:10px; }
+            .cost-red { color:#e12626; } .cost-teal { color:#0089a3; } .cost-green { color:#128a55; }
+            .cost-bg-red { background:#ffe5e8; color:#e12626; } .cost-bg-teal { background:#e4f5f8; color:#0089a3; }
+            .cost-bg-green { background:#e3f4eb; color:#128a55; }
+            .cost-card {
+              background:#fff; border:1px solid #e1e8f1; border-radius:10px;
+              box-shadow:0 8px 22px rgba(15,23,42,.06); padding:16px 18px; margin-bottom:18px;
+            }
+            .cost-card-head { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:8px; }
+            .cost-card-title { color:#071326; font-size:16px; line-height:1.2; font-weight:900; margin:0; }
+            .cost-info { color:#7b879d; border:1px solid #9aa6ba; width:15px; height:15px; border-radius:50%; display:inline-grid; place-items:center; font-size:10px; font-weight:900; margin-left:5px; }
+            .cost-tools { display:flex; gap:7px; }
+            .cost-tool { width:28px; height:28px; border:1px solid #dfe7f1; border-radius:7px; display:grid; place-items:center; color:#253247; font-weight:900; background:#fff; box-shadow:0 2px 7px rgba(15,23,42,.05); }
+            .cost-panel-grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+            .cost-provider-wrap { display:grid; grid-template-columns:minmax(0,1fr) 255px; gap:14px; align-items:center; }
+            .cost-provider-legend-title, .cost-provider-row { display:grid; grid-template-columns:1fr 86px; gap:10px; align-items:center; }
+            .cost-provider-legend-title { color:#667085; font-size:10px; font-weight:900; margin-bottom:6px; }
+            .cost-provider-row { color:#172033; font-size:11px; font-weight:800; padding:5px 0; border-bottom:1px solid #e8edf4; }
+            .cost-dot { width:9px; height:9px; display:inline-block; border-radius:999px; margin-right:8px; }
+            .cost-panel-footer { display:flex; justify-content:space-between; align-items:center; color:#071326; font-size:12px; font-weight:800; border:1px solid #e8edf4; border-radius:8px; padding:10px 14px; margin-top:10px; }
+            .cost-table-toolbar { display:flex; justify-content:space-between; align-items:center; gap:14px; margin:4px 0 14px 0; }
+            .cost-table-actions { display:flex; gap:8px; align-items:center; }
+            .cost-search, .cost-filter {
+              height:36px; border:1px solid #dfe7f1; border-radius:8px; background:#fff; display:flex;
+              align-items:center; gap:8px; color:#667085; font-size:12px; font-weight:700; padding:0 13px;
+            }
+            .cost-search { min-width:250px; justify-content:flex-start; }
+            .cost-filter { min-width:100px; justify-content:center; color:#263449; }
+            .cost-table-wrap { border:1px solid #e1e8f1; border-radius:10px; overflow:hidden; }
+            .cost-table { width:100%; border-collapse:separate; border-spacing:0; color:#172033; font-size:11px; }
+            .cost-table th {
+              height:34px; background:#f7f9fc; color:#52647f; text-align:left; font-weight:900;
+              padding:0 10px; border-bottom:1px solid #e2e8f0; border-right:1px solid #e8edf4; white-space:nowrap;
+            }
+            .cost-table td {
+              height:32px; padding:0 10px; border-bottom:1px solid #eef2f7; border-right:1px solid #eef2f7;
+              font-weight:800; white-space:nowrap;
+            }
+            .cost-num { text-align:right; color:#e12626; }
+            .cost-footer { min-height:52px; padding:0 12px; display:flex; justify-content:space-between; align-items:center; color:#667085; font-size:11px; font-weight:800; border-top:1px solid #e8edf4; }
+            .cost-pages { display:flex; align-items:center; gap:7px; }
+            .cost-page { min-height:28px; min-width:30px; border:1px solid #dfe7f1; border-radius:7px; display:flex; align-items:center; justify-content:center; padding:0 10px; background:#fff; color:#263449; }
+            .cost-page.active { background:#00728d; color:#fff; border-color:#00728d; }
+            @media(max-width:1200px){ .cost-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.cost-panel-grid,.cost-provider-wrap{grid-template-columns:1fr;}.cost-table-wrap{overflow-x:auto;} }
+            @media(max-width:760px){ .cost-kpi-grid{grid-template-columns:1fr;}.cost-table-toolbar{display:block;}.cost-table-actions{margin-top:10px; flex-wrap:wrap;}.cost-search{min-width:100%;} }
             </style>
             """,
             unsafe_allow_html=True,
         )
+
         st.markdown(
             f"""
-            <div class="kpi-grid-3">
-              <div class="kpi-card kpi-red">
-                <div class="kpi-title">TOTAL COSTOS</div>
-                <div class="kpi-value">${total_cost:,.0f}</div>
-                <div class="kpi-sub">Suma filtrada</div>
+            <div class="cost-page-head">
+              <h1 class="cost-page-title">Costos — Análisis técnico</h1>
+            </div>
+            <div class="cost-section-title">Resumen general</div>
+            <div class="cost-kpi-grid">
+              <div class="cost-kpi-card">
+                <div class="cost-kpi-icon cost-bg-red">$</div>
+                <div><div class="cost-kpi-label">Total costos</div><div class="cost-kpi-value cost-red">{_fmt_cost(total_cost)}</div><div class="cost-kpi-sub">Suma filtrada</div></div>
               </div>
-              <div class="kpi-card kpi-navy">
-                <div class="kpi-title">PROMEDIO MENSUAL</div>
-                <div class="kpi-value">${avg_mensual:,.0f}</div>
-                <div class="kpi-sub">Costo medio por mes</div>
+              <div class="cost-kpi-card">
+                <div class="cost-kpi-icon cost-bg-teal">▥</div>
+                <div><div class="cost-kpi-label">Promedio mensual</div><div class="cost-kpi-value cost-teal">{_fmt_cost(avg_mensual)}</div><div class="cost-kpi-sub">Costo medio por mes</div></div>
               </div>
-              <div class="kpi-card kpi-teal">
-                <div class="kpi-title">TOP CATEGORÍA</div>
-                <div class="kpi-value">{top_cat}</div>
-                <div class="kpi-sub">Mayor gasto</div>
+              <div class="cost-kpi-card">
+                <div class="cost-kpi-icon cost-bg-green">◇</div>
+                <div><div class="cost-kpi-label">Top categoría</div><div class="cost-kpi-value cost-green">{html.escape(_clip_label(top_cat, 24))}</div><div class="cost-kpi-sub">Mayor gasto</div></div>
               </div>
-              <div class="kpi-card kpi-green">
-                <div class="kpi-title">TOP PROVEEDOR</div>
-                <div class="kpi-value">{top_prov}</div>
-                <div class="kpi-sub">Mayor gasto</div>
+              <div class="cost-kpi-card">
+                <div class="cost-kpi-icon cost-bg-green">♙</div>
+                <div><div class="cost-kpi-label">Top proveedor</div><div class="cost-kpi-value cost-green">{html.escape(_clip_label(top_prov, 24))}</div><div class="cost-kpi-sub">Mayor gasto</div></div>
               </div>
             </div>
             """,
@@ -2167,8 +2247,8 @@ def run_streamlit():
         )
 
         try:
-            import plotly.express as px
             import plotly.graph_objects as go
+            from plotly.subplots import make_subplots
         except Exception:
             st.error("Falta Plotly para el gráfico avanzado. Instala con: pip install plotly")
         else:
@@ -2183,95 +2263,225 @@ def run_streamlit():
                 "#2A3F4D",
             ]
 
-            if "periodo" in filt.columns:
-                per = (
-                    filt.groupby("periodo", as_index=False)["monto_norm"]
-                    .sum()
-                    .sort_values("periodo")
+            if "periodo" in filt.columns and not filt.empty:
+                per = filt.groupby("periodo", as_index=False)["monto_norm"].sum().sort_values("periodo")
+                per["movil_6m"] = per["monto_norm"].rolling(6, min_periods=1).mean()
+                per["acumulado"] = per["monto_norm"].cumsum()
+                fig_p = make_subplots(specs=[[{"secondary_y": True}]])
+                fig_p.add_trace(
+                    go.Bar(
+                        x=per["periodo"],
+                        y=per["monto_norm"],
+                        name="Costo (CLP)",
+                        marker=dict(color="#0b2638"),
+                        text=per["monto_norm"].map(_fmt_cost_short),
+                        textposition="inside",
+                        textfont=dict(color="white", size=9),
+                        hovertemplate="Periodo %{x}<br>Costo %{y:,.0f} CLP<extra></extra>",
+                    ),
+                    secondary_y=False,
                 )
-                fig_p = px.bar(
-                    per,
-                    x="periodo",
-                    y="monto_norm",
-                    title="Costos por periodo",
-                    labels={"periodo": "Periodo", "monto_norm": "Costo (CLP)"},
-                    color_discrete_sequence=["#0B1F2A"],
-                    text="monto_norm",
+                fig_p.add_trace(
+                    go.Scatter(
+                        x=per["periodo"],
+                        y=per["movil_6m"],
+                        name="Promedio móvil (6m)",
+                        mode="lines",
+                        line=dict(color="#0089a3", width=2, dash="dash"),
+                    ),
+                    secondary_y=False,
                 )
-                fig_p.update_traces(
-                    texttemplate="$%{text:,.0f}",
-                    textposition="inside",
-                    textfont_color="white",
-                    hovertemplate="Periodo %{x}<br>Costo CLP %{y:,.0f}<extra></extra>",
+                fig_p.add_trace(
+                    go.Scatter(
+                        x=per["periodo"],
+                        y=per["acumulado"],
+                        name="Total acumulado (CLP)",
+                        mode="lines",
+                        line=dict(color="#57c0cf", width=2),
+                        fill="tozeroy",
+                        fillcolor="rgba(87,192,207,.12)",
+                    ),
+                    secondary_y=True,
                 )
                 fig_p.update_layout(
+                    height=390,
+                    barmode="relative",
                     hovermode="x unified",
-                    height=420,
                     plot_bgcolor="#ffffff",
-                    paper_bgcolor="white",
-                    xaxis=dict(showgrid=False),
-                    yaxis=dict(gridcolor="#e9edf3"),
+                    paper_bgcolor="#ffffff",
+                    margin=dict(l=44, r=50, t=14, b=48),
+                    legend=dict(orientation="h", y=1.08, x=0, font=dict(size=11)),
+                    font=dict(family="Inter, Arial, sans-serif", color="#52647f", size=11),
                 )
-                st.plotly_chart(fig_p, use_container_width=True)
+                fig_p.update_xaxes(showgrid=False, tickangle=0, nticks=8)
+                fig_p.update_yaxes(title_text="Costo (CLP)", gridcolor="#e5ebf3", zeroline=True, zerolinecolor="#ccd6e3", secondary_y=False)
+                fig_p.update_yaxes(title_text="Total acumulado (CLP)", gridcolor="#eef2f7", secondary_y=True)
+                st.markdown(
+                    """
+                    <div class="cost-card">
+                      <div class="cost-card-head"><h2 class="cost-card-title">1. Costos por periodo <span class="cost-info">i</span></h2><div class="cost-tools"><span class="cost-tool">▣</span><span class="cost-tool">⌕</span><span class="cost-tool">⊞</span><span class="cost-tool">⛶</span></div></div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+                st.plotly_chart(fig_p, use_container_width=True, config={"displayModeBar": False})
+                st.markdown("</div>", unsafe_allow_html=True)
 
-            if col_cc:
-                cat = (
-                    filt.groupby(col_cc, as_index=False)["monto_norm"]
-                    .sum()
-                    .sort_values("monto_norm", ascending=False)
-                )
-                cat["cum_pct"] = cat["monto_norm"].cumsum() / cat["monto_norm"].sum() * 100
+            panel_left, panel_right = st.columns(2, gap="medium")
+
+            if col_cc and not filt.empty:
+                cat = filt.groupby(col_cc, as_index=False)["monto_norm"].sum()
+                cat["abs_monto"] = cat["monto_norm"].abs()
+                cat = cat.sort_values("abs_monto", ascending=False).head(8)
+                cat["cum_pct"] = cat["abs_monto"].cumsum() / max(float(cat["abs_monto"].sum()), 1.0) * 100
                 fig_c = go.Figure()
                 fig_c.add_trace(go.Bar(
-                    x=cat[col_cc].head(12),
-                    y=cat["monto_norm"].head(12),
-                    name="Costo",
+                    x=cat[col_cc].astype(str),
+                    y=-cat["abs_monto"],
+                    name="Costo (CLP)",
                     marker_color="#2C5B4A",
-                    text=cat["monto_norm"].head(12),
+                    text=(-cat["abs_monto"]).map(_fmt_cost_short),
                     textposition="inside",
-                    texttemplate="$%{text:,.0f}",
                     textfont=dict(color="white"),
                 ))
                 fig_c.add_trace(go.Scatter(
-                    x=cat[col_cc].head(12),
-                    y=cat["cum_pct"].head(12),
+                    x=cat[col_cc].astype(str),
+                    y=cat["cum_pct"],
                     name="% acumulado",
                     yaxis="y2",
                     mode="lines+markers",
                     line=dict(color="#0B1F2A", width=2),
                 ))
                 fig_c.update_layout(
-                    title="Costo por categoría",
-                    yaxis=dict(title="Costo (CLP)"),
-                    yaxis2=dict(title="% acumulado", overlaying="y", side="right"),
+                    yaxis=dict(title="Costo (CLP)", gridcolor="#e5ebf3", zeroline=True),
+                    yaxis2=dict(title="% acumulado", overlaying="y", side="right", range=[0, 105], ticksuffix="%"),
                     hovermode="x unified",
-                    height=420,
+                    height=330,
+                    margin=dict(l=45, r=45, t=12, b=42),
+                    plot_bgcolor="#ffffff",
+                    paper_bgcolor="#ffffff",
+                    legend=dict(orientation="h", y=1.08, x=0, font=dict(size=10)),
+                    font=dict(family="Inter, Arial, sans-serif", color="#52647f", size=10),
                 )
-                st.plotly_chart(fig_c, use_container_width=True)
+                with panel_left:
+                    st.markdown(
+                        """
+                        <div class="cost-card">
+                          <div class="cost-card-head"><h2 class="cost-card-title">2. Costos por categoría <span class="cost-info">i</span></h2><div class="cost-tools"><span class="cost-tool">▣</span><span class="cost-tool">⛶</span></div></div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+                    st.plotly_chart(fig_c, use_container_width=True, config={"displayModeBar": False})
+                    st.markdown(
+                        f"<div class=\"cost-panel-footer\"><span>Total costos: <span class=\"cost-red\">{_fmt_cost(total_cost)}</span></span><span>{len(cat):,} categorías</span></div></div>",
+                        unsafe_allow_html=True,
+                    )
 
-            if col_prov:
-                prov = (
-                    filt.groupby(col_prov, as_index=False)["monto_norm"]
-                    .sum()
-                    .assign(monto_abs=lambda d: d["monto_norm"].abs())
-                    .query("monto_abs > 0")
-                    .sort_values("monto_abs", ascending=False)
-                    .head(12)
+            if col_prov and not filt.empty:
+                prov = filt.groupby(col_prov, as_index=False)["monto_norm"].sum()
+                prov["monto_abs"] = prov["monto_norm"].abs()
+                prov = prov[prov["monto_abs"] > 0].sort_values("monto_abs", ascending=False).head(12)
+                provider_colors = [muted_palette[i % len(muted_palette)] for i in range(len(prov))]
+                fig_v = go.Figure(
+                    data=[
+                        go.Pie(
+                            labels=prov[col_prov].astype(str),
+                            values=prov["monto_abs"],
+                            hole=0.42,
+                            sort=False,
+                            marker=dict(colors=provider_colors, line=dict(color="rgba(255,255,255,.22)", width=1)),
+                            texttemplate="%{percent}",
+                            textposition="inside",
+                            textfont=dict(color="white", size=10),
+                            hovertemplate="%{label}<br>Costo CLP %{value:,.0f}<br>%{percent}<extra></extra>",
+                        )
+                    ]
                 )
-                fig_v = px.pie(
-                    prov,
-                    names=col_prov,
-                    values="monto_abs",
-                    title="Costos por proveedor (top 12)",
-                    hole=0.35,
-                    color_discrete_sequence=muted_palette,
+                fig_v.update_layout(
+                    height=330,
+                    showlegend=False,
+                    margin=dict(l=0, r=0, t=0, b=0),
+                    paper_bgcolor="#ffffff",
+                    plot_bgcolor="#ffffff",
+                    annotations=[dict(text=f"Total<br><b>{_fmt_cost(total_cost)}</b>", showarrow=False, x=0.5, y=0.5, font=dict(size=12, color="#172033"))],
                 )
-                fig_v.update_traces(textinfo="percent+label")
-                fig_v.update_layout(height=462, legend_title_text="Proveedor")
-                st.plotly_chart(fig_v, use_container_width=True)
+                legend_rows = []
+                for i, (_, row) in enumerate(prov.iterrows()):
+                    legend_rows.append(
+                        "<div class=\"cost-provider-row\">"
+                        f"<div><span class=\"cost-dot\" style=\"background:{provider_colors[i]}\"></span>{html.escape(_clip_label(row[col_prov], 23))}</div>"
+                        f"<div style=\"text-align:right;\">{_fmt_cost(float(row['monto_norm']))}</div>"
+                        "</div>"
+                    )
+                with panel_right:
+                    st.markdown(
+                        """
+                        <div class="cost-card">
+                          <div class="cost-card-head"><h2 class="cost-card-title">3. Costos por proveedor (top 12) <span class="cost-info">i</span></h2><div class="cost-tools"><span class="cost-tool">▣</span><span class="cost-tool">⛶</span></div></div>
+                          <div class="cost-provider-wrap">
+                        """,
+                        unsafe_allow_html=True,
+                    )
+                    donut_col, legend_col = st.columns([0.9, 1.0])
+                    with donut_col:
+                        st.plotly_chart(fig_v, use_container_width=True, config={"displayModeBar": False})
+                    with legend_col:
+                        st.markdown(
+                            "<div class=\"cost-provider-legend-title\"><div>Proveedor</div><div style=\"text-align:right;\">Costo (CLP)</div></div>"
+                            + "".join(legend_rows),
+                            unsafe_allow_html=True,
+                        )
+                    st.markdown("</div><div class=\"cost-panel-footer\" style=\"justify-content:center;\">Ver todos los proveedores&nbsp;&nbsp;›</div></div>", unsafe_allow_html=True)
 
-        st.subheader("Detalle de costos (filtrado)")
-        st.dataframe(filt, use_container_width=True)
+        table_df = filt.copy()
+        table_df["__fecha_show"] = table_df["fecha_norm"].map(_fmt_date_cost) if "fecha_norm" in table_df.columns else ""
+        table_df["__periodo_show"] = table_df["periodo"].astype(str) if "periodo" in table_df.columns else ""
+        table_df["__detalle_show"] = table_df[col_detalle].astype(str) if col_detalle else ""
+        table_df["__monto_show"] = table_df["monto_norm"].map(_fmt_cost)
+        table_df["__proveedor_show"] = table_df[col_prov].astype(str) if col_prov else ""
+        table_df["__categoria_show"] = table_df[col_cc].astype(str) if col_cc else ""
+        table_df["__cc_show"] = table_df[col_ccc].astype(str) if col_ccc else ""
+        table_df["__pago_show"] = table_df[col_pago].astype(str) if col_pago else ""
+        rows = []
+        for _, row in table_df.sort_values("__fecha_show").head(10).iterrows():
+            rows.append(
+                "<tr>"
+                f"<td>{html.escape(str(row['__fecha_show']))}</td>"
+                f"<td>{html.escape(str(row['__periodo_show']))}</td>"
+                f"<td>{html.escape(_clip_label(row['__detalle_show'], 32))}</td>"
+                f"<td class=\"cost-num\">{html.escape(str(row['__monto_show']))}</td>"
+                f"<td>{html.escape(_clip_label(row['__proveedor_show'], 26))}</td>"
+                f"<td>{html.escape(_clip_label(row['__categoria_show'], 18))}</td>"
+                f"<td>{html.escape(_clip_label(row['__cc_show'], 16))}</td>"
+                f"<td>{html.escape(_clip_label(row['__pago_show'], 18))}</td>"
+                f"<td>{html.escape(str(row['__fecha_show']))}</td>"
+                "</tr>"
+            )
+        st.markdown(
+            f"""
+            <div class="cost-card">
+              <div class="cost-table-toolbar">
+                <h2 class="cost-card-title">4. Detalle de costos (filtrado) <span class="cost-info">i</span></h2>
+                <div class="cost-table-actions">
+                  <div class="cost-search">⌕ <span>Buscar en la tabla...</span></div>
+                  <div class="cost-filter">≡ <span>Filtros</span></div>
+                  <span class="cost-tool">⇩</span>
+                  <span class="cost-tool">⋮</span>
+                </div>
+              </div>
+              <div class="cost-table-wrap">
+                <table class="cost-table">
+                  <thead><tr><th>Fecha</th><th>Periodo</th><th>Detalle trabajo</th><th class="cost-num">Monto (CLP)</th><th>Proveedor</th><th>Categoría</th><th>CC</th><th>Forma de pago</th><th>Fecha</th></tr></thead>
+                  <tbody>{''.join(rows)}</tbody>
+                </table>
+                <div class="cost-footer">
+                  <div>Mostrando 1 a {min(10, len(table_df)):,} de {len(table_df):,} registros</div>
+                  <div class="cost-pages"><span>Filas por página</span><span class="cost-page">10⌄</span><span class="cost-page">‹ Anterior</span><span class="cost-page active">1</span><span class="cost-page">2</span><span class="cost-page">3</span><span class="cost-page">…</span><span class="cost-page">Siguiente ›</span></div>
+                </div>
+              </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
     if selected_section == "Obligaciones":
         with st.spinner("Cargando obligaciones y pagos..."):
