@@ -1385,6 +1385,7 @@ def run_streamlit():
         banco_futuro = total_neto - pendiente_proveedores
 
         # KPI de pendientes (desde Obligaciones)
+        oblig_anual_g = pd.DataFrame(columns=["anio", "gc_total"])
         try:
             df_obl_g = _load(OBLIGACIONES_CSV_URL, CACHE_VERSION, {"ano", "anio", "año", "parcela", "gc"})
             df_ing_g2 = _load(INGRESOS_CSV_URL, CACHE_VERSION, {"fecha", "parcela", "abono"})
@@ -1829,12 +1830,20 @@ def run_streamlit():
             }
 
             table_rows = []
+            obligacion_por_anio = {}
+            if not oblig_anual_g.empty:
+                obligacion_por_anio = {
+                    int(row["anio"]): float(row.get("gc_total", 0) or 0)
+                    for _, row in oblig_anual_g.dropna(subset=["anio"]).iterrows()
+                }
             for _, row in df_y.sort_values("anio").iterrows():
                 year = int(row["anio"])
                 net_class = " class='net-negative'" if float(row["neto"]) < 0 else ""
+                obligacion_anual = obligacion_por_anio.get(year, 0.0)
                 table_rows.append(
                     "<tr>"
                     f"<td><span class=\"year-dot\" style=\"background:{color_for_year[year]}\"></span>{year}</td>"
+                    f"<td>{_money(obligacion_anual)}</td>"
                     f"<td>{_money(float(row['ingresos']))}</td>"
                     f"<td>{_money(float(row['costos']))}</td>"
                     f"<td{net_class}>{_money(float(row['neto']))}</td>"
@@ -1845,7 +1854,7 @@ def run_streamlit():
                 "<div class=\"finance-card-title\">Resumen por año <span class=\"finance-info\">i</span></div>"
                 "<div class=\"year-table-wrap\">"
                 "<table class=\"year-table\">"
-                "<thead><tr><th>Año</th><th>Ingresos (CLP)</th><th>Costos (CLP)</th><th>Neto (CLP)</th></tr></thead>"
+                "<thead><tr><th>Año</th><th>Obligación por año</th><th>Ingresos (CLP)</th><th>Costos (CLP)</th><th>Neto (CLP)</th></tr></thead>"
                 f"<tbody>{''.join(table_rows)}</tbody>"
                 "</table>"
                 "</div>"
