@@ -959,6 +959,7 @@ def run_streamlit():
         )
         if st.button("↻\nActualizar datos", key="refresh_data", help="Recargar datos sin cambiar de pestaña"):
             st.cache_data.clear()
+            st.session_state.pop("report_pdf_bytes", None)
             st.session_state["refresh_done"] = True
             st.rerun()
 
@@ -970,12 +971,20 @@ def run_streamlit():
         return load_data(url_value, expected_cols)
 
     @st.cache_data(show_spinner=False)
+    def _load_td23(url_value: str, cache_version: int) -> pd.DataFrame:
+        return load_td23_table(url_value)
+
+    @st.cache_data(show_spinner=False)
+    def _load_mantencion(url_value: str, cache_version: int) -> pd.DataFrame:
+        return load_mantencion_table(url_value)
+
+    @st.cache_data(show_spinner=False)
     def _make_obligaciones_report() -> bytes:
         df_obl = _load(OBLIGACIONES_CSV_URL, CACHE_VERSION, {"ano", "anio", "año", "parcela", "gc"})
         df_ing_o = _load(INGRESOS_CSV_URL, CACHE_VERSION, {"fecha", "parcela", "abono"})
         df_prop = _load(PROPIETARIOS_CSV_URL, CACHE_VERSION, {"parcela", "propietario"})
-        df_td = load_td23_table(TD23_CSV_URL)
-        df_mant = load_mantencion_table(MANTENCION_CSV_URL)
+        df_td = _load_td23(TD23_CSV_URL, CACHE_VERSION)
+        df_mant = _load_mantencion(MANTENCION_CSV_URL, CACHE_VERSION)
 
         cols_ing_o = list(df_ing_o.columns)
         cand_concepto = ["detalle", "concepto", "glosa", "descripcion", "tipo", "categoria", "cc", "ccc", "medio"]
@@ -1317,18 +1326,22 @@ def run_streamlit():
         with col_title:
             st.empty()
         with col_btn:
-            try:
-                report_pdf = _make_obligaciones_report()
+            if st.button("Preparar reporte PDF", key="prepare_report_pdf"):
+                try:
+                    st.session_state["report_pdf_bytes"] = _make_obligaciones_report()
+                    st.toast("Reporte listo para descargar")
+                except RuntimeError as e:
+                    st.info(str(e))
+                except Exception as e:
+                    st.error(f"No se pudo generar el reporte. Detalle: {e}")
+            report_pdf = st.session_state.get("report_pdf_bytes")
+            if report_pdf:
                 st.download_button(
                     "⇩  Descargar reporte (PDF)",
                     data=report_pdf,
                     file_name="reporte_obligaciones.pdf",
                     mime="application/pdf",
                 )
-            except RuntimeError as e:
-                st.info(str(e))
-            except Exception as e:
-                st.error(f"No se pudo generar el reporte. Detalle: {e}")
 
     if selected_section == "General":
         with st.spinner("Cargando datos generales..."):
@@ -1407,7 +1420,7 @@ def run_streamlit():
                     ing_all = ing_all.dropna(subset=["parcela", "monto_norm"])
 
                     # Pendiente mantención
-                    df_mant_g = load_mantencion_table(MANTENCION_CSV_URL)
+                    df_mant_g = _load_mantencion(MANTENCION_CSV_URL, CACHE_VERSION)
                     if not df_mant_g.empty and col_cc_ing:
                         mant = df_mant_g.groupby("parcela", as_index=False)["mantencion"].sum()
                         cc_text = (
@@ -1432,7 +1445,7 @@ def run_streamlit():
                         pendiente_mant = float((mant["mantencion"] - mant["pagado_mant"]).clip(lower=0).sum())
 
                     # Pendiente proyecto por CC desde TD 2.3
-                    df_td_g = load_td23_table(TD23_CSV_URL)
+                    df_td_g = _load_td23(TD23_CSV_URL, CACHE_VERSION)
                     if not df_td_g.empty and col_cc_ing:
                         ing_cc = ing_all.copy()
                         ing_cc["cc_norm"] = ing_cc[col_cc_ing].astype(str).str.lower()
@@ -2548,8 +2561,8 @@ def run_streamlit():
             df_obl = _load(OBLIGACIONES_CSV_URL, CACHE_VERSION, {"ano", "anio", "año", "parcela", "gc"})
             df_ing_o = _load(INGRESOS_CSV_URL, CACHE_VERSION, {"fecha", "parcela", "abono"})
             df_prop = _load(PROPIETARIOS_CSV_URL, CACHE_VERSION, {"parcela", "propietario"})
-            df_td = load_td23_table(TD23_CSV_URL)
-            df_mant = load_mantencion_table(MANTENCION_CSV_URL)
+            df_td = _load_td23(TD23_CSV_URL, CACHE_VERSION)
+            df_mant = _load_mantencion(MANTENCION_CSV_URL, CACHE_VERSION)
             df_por_pagar_o = _load(
                 POR_PAGAR_CSV_URL,
                 CACHE_VERSION,
