@@ -1278,36 +1278,23 @@ def run_streamlit():
         )
         return report_pdf
 
-    st.markdown(
-        """
-        <div class="top-shell">
-          <div>
-            <h1 class="app-title">Condominio Los Queltehues III</h1>
-          </div>
-          <div class="top-actions" aria-hidden="true">
-            <span>☼</span><span>☆</span><span>♢</span><span>◉</span><span>⋮</span>
-          </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    col_title, col_btn = st.columns([0.78, 0.22])
-    with col_title:
-        st.empty()
-    with col_btn:
-        try:
-            report_pdf = _make_obligaciones_report()
-            st.download_button(
-                "⇩  Descargar reporte (PDF)",
-                data=report_pdf,
-                file_name="reporte_obligaciones.pdf",
-                mime="application/pdf",
-            )
-        except RuntimeError as e:
-            st.info(str(e))
-        except Exception as e:
-            st.error(f"No se pudo generar el reporte. Detalle: {e}")
+    if selected_section != "Costos":
+        col_title, col_btn = st.columns([0.78, 0.22])
+        with col_title:
+            st.empty()
+        with col_btn:
+            try:
+                report_pdf = _make_obligaciones_report()
+                st.download_button(
+                    "⇩  Descargar reporte (PDF)",
+                    data=report_pdf,
+                    file_name="reporte_obligaciones.pdf",
+                    mime="application/pdf",
+                )
+            except RuntimeError as e:
+                st.info(str(e))
+            except Exception as e:
+                st.error(f"No se pudo generar el reporte. Detalle: {e}")
 
     if selected_section == "General":
         with st.spinner("Cargando datos generales..."):
