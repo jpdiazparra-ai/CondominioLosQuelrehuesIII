@@ -2607,166 +2607,378 @@ def run_streamlit():
             )
 
             st.subheader("Obligación acumulada vs Pagos")
-            try:
-                import plotly.graph_objects as go
-                from plotly.subplots import make_subplots
-            except Exception:
-                st.error("Falta Plotly para el gráfico avanzado. Instala con: pip install plotly")
-            else:
-                viz_df = tabla_full.copy()
-                viz_df["cumplimiento_pct"] = (
-                    (viz_df["pagado"] / viz_df["gc_total"].replace(0, pd.NA)) * 100
-                ).fillna(0).clip(lower=0)
-                viz_df["pendiente_plot"] = viz_df["pendiente_pos"]
-                viz_df["favor_plot"] = -viz_df["saldo_favor"]
-                parcelas_orden = list(range(17, 37))
-                viz_df["parcela"] = pd.to_numeric(viz_df["parcela"], errors="coerce")
-                viz_df = (
-                    pd.DataFrame({"parcela": parcelas_orden})
-                    .merge(viz_df, on="parcela", how="left")
-                    .fillna(
-                        {
-                            "gc_total": 0,
-                            "pagado": 0,
-                            "cumplimiento_pct": 0,
-                            "pendiente_plot": 0,
-                            "favor_plot": 0,
-                            "saldo_favor": 0,
-                        }
+            viz_df = tabla_full.copy()
+            viz_df["cumplimiento_pct"] = (
+                (viz_df["pagado"] / viz_df["gc_total"].replace(0, pd.NA)) * 100
+            ).fillna(0).clip(lower=0)
+            viz_df["pendiente_plot"] = viz_df["pendiente_pos"]
+            viz_df["favor_plot"] = viz_df["saldo_favor"]
+            parcelas_orden = list(range(17, 37))
+            viz_df["parcela"] = pd.to_numeric(viz_df["parcela"], errors="coerce")
+            viz_df = (
+                pd.DataFrame({"parcela": parcelas_orden})
+                .merge(viz_df, on="parcela", how="left")
+                .fillna(
+                    {
+                        "gc_total": 0,
+                        "pagado": 0,
+                        "cumplimiento_pct": 0,
+                        "pendiente_plot": 0,
+                        "favor_plot": 0,
+                        "saldo_favor": 0,
+                    }
+                )
+            )
+            viz_df["Parcela"] = viz_df["parcela"].astype(int).astype(str)
+            max_main = max(float(viz_df[["gc_total", "pagado"]].max().max()), 1.0)
+            max_gap = max(float(viz_df[["pendiente_plot", "favor_plot"]].max().max()), 1.0)
+            paid_total = float(viz_df["pagado"].sum())
+            obligation_total = float(viz_df["gc_total"].sum())
+            coverage_total = (paid_total / obligation_total * 100) if obligation_total else 0.0
+
+            def _money_short(v: float) -> str:
+                try:
+                    value = float(v)
+                except Exception:
+                    return "$0"
+                if abs(value) >= 1_000_000:
+                    return f"${value / 1_000_000:.1f}M"
+                if abs(value) >= 1_000:
+                    return f"${value / 1_000:.0f}K"
+                return f"${value:,.0f}"
+
+            chart_rows = []
+            for _, row in viz_df.iterrows():
+                obligation = float(row.get("gc_total", 0) or 0)
+                paid = float(row.get("pagado", 0) or 0)
+                pending = float(row.get("pendiente_plot", 0) or 0)
+                favor = float(row.get("favor_plot", 0) or 0)
+                coverage = float(row.get("cumplimiento_pct", 0) or 0)
+                obligation_w = max((obligation / max_main) * 100, 1.5) if obligation else 0
+                paid_w = max((paid / max_main) * 100, 1.5) if paid else 0
+                pending_w = max((pending / max_gap) * 100, 1.5) if pending else 0
+                favor_w = max((favor / max_gap) * 100, 1.5) if favor else 0
+                gap_class = "obl-gap-favor" if favor > 0 else "obl-gap-pending"
+                gap_w = favor_w if favor > 0 else pending_w
+                gap_label = _money_short(favor if favor > 0 else pending)
+                chart_rows.append(
+                    "<div class=\"obl-compare-row\">"
+                    f"<div class=\"obl-compare-parcel\">{html.escape(str(row['Parcela']))}</div>"
+                    "<div class=\"obl-bars\">"
+                    f"<div class=\"obl-bar obl-bar-obligation\" style=\"width:{obligation_w:.2f}%\"></div>"
+                    f"<div class=\"obl-bar obl-bar-paid\" style=\"width:{paid_w:.2f}%\"><span>{coverage:.0f}%</span></div>"
+                    "</div>"
+                    f"<div class=\"obl-compare-amount\">{_money_short(paid)}</div>"
+                    f"<div class=\"obl-gap-track\"><div class=\"obl-gap {gap_class}\" style=\"width:{gap_w:.2f}%\"></div></div>"
+                    f"<div class=\"obl-gap-label\">{gap_label}</div>"
+                    "</div>"
+                )
+
+            year_rows = []
+            if not oblig_anual.empty:
+                year_max = max(float(oblig_anual["gc_total"].max()), 1.0)
+                for _, row in oblig_anual.sort_values("anio").iterrows():
+                    year_value = float(row.get("gc_total", 0) or 0)
+                    year_w = max((year_value / year_max) * 100, 2) if year_value else 0
+                    year_rows.append(
+                        "<div class=\"obl-year-row\">"
+                        f"<span>{int(row['anio'])}</span>"
+                        f"<div><i style=\"width:{year_w:.2f}%\"></i></div>"
+                        f"<b>{_money_short(year_value)}</b>"
+                        "</div>"
                     )
-                )
-                viz_df["Parcela"] = viz_df["parcela"].astype(int).astype(str)
-                fig_obl_comp = make_subplots(
-                    rows=2,
-                    cols=1,
-                    shared_xaxes=False,
-                    vertical_spacing=0.12,
-                    row_heights=[0.68, 0.32],
-                    subplot_titles=(
-                        "Cobertura de pagos por parcela (17 al 36)",
-                        "Brecha por parcela: pendiente o saldo a favor",
-                    ),
-                )
-                fig_obl_comp.add_trace(
-                    go.Bar(
-                        y=viz_df["Parcela"],
-                        x=viz_df["gc_total"],
-                        name="Obligación",
-                        orientation="h",
-                        marker=dict(color="#E2E8F0", line=dict(color="#CBD5E1", width=1)),
-                        hovertemplate="Parcela %{y}<br>Obligación CLP %{x:,.0f}<extra></extra>",
-                    ),
-                    row=1,
-                    col=1,
-                )
-                fig_obl_comp.add_trace(
-                    go.Bar(
-                        y=viz_df["Parcela"],
-                        x=viz_df["pagado"],
-                        name="Pagado",
-                        orientation="h",
-                        marker=dict(color="#15803D"),
-                        text=viz_df["cumplimiento_pct"].map(lambda v: f"{v:.0f}%"),
-                        textposition="inside",
-                        textfont=dict(color="white", size=11),
-                        hovertemplate="Parcela %{y}<br>Pagado CLP %{x:,.0f}<br>Cumplimiento %{text}<extra></extra>",
-                    ),
-                    row=1,
-                    col=1,
-                )
-                fig_obl_comp.add_trace(
-                    go.Bar(
-                        y=viz_df["Parcela"],
-                        x=viz_df["pendiente_plot"],
-                        name="Pendiente GC",
-                        orientation="h",
-                        marker=dict(color="#DC2626"),
-                        hovertemplate="Parcela %{y}<br>Pendiente CLP %{x:,.0f}<extra></extra>",
-                    ),
-                    row=2,
-                    col=1,
-                )
-                fig_obl_comp.add_trace(
-                    go.Bar(
-                        y=viz_df["Parcela"],
-                        x=viz_df["favor_plot"],
-                        name="Saldo a favor",
-                        orientation="h",
-                        marker=dict(color="#0EA5A4"),
-                        customdata=viz_df["saldo_favor"],
-                        hovertemplate="Parcela %{y}<br>Saldo a favor CLP %{customdata:,.0f}<extra></extra>",
-                    ),
-                    row=2,
-                    col=1,
-                )
-                fig_obl_comp.add_vline(
-                    x=gc_total_parcela,
-                    line_dash="dot",
-                    line_color="#475569",
-                    line_width=2,
-                    row=1,
-                    col=1,
-                )
-                fig_obl_comp.update_layout(
-                    barmode="overlay",
-                    height=920,
-                    margin=dict(l=20, r=20, t=80, b=30),
-                    paper_bgcolor="white",
-                    plot_bgcolor="#F8FAFC",
-                    hovermode="y unified",
-                    legend=dict(orientation="h", yanchor="bottom", y=1.04, xanchor="left", x=0),
-                    bargap=0.16,
-                )
-                fig_obl_comp.update_xaxes(
-                    title_text="Monto (CLP)",
-                    gridcolor="#CBD5E1",
-                    zeroline=False,
-                    tickformat=",.0f",
-                    row=1,
-                    col=1,
-                )
-                fig_obl_comp.update_xaxes(
-                    title_text="Pendiente (+) / Saldo a favor (-)",
-                    gridcolor="#CBD5E1",
-                    zeroline=True,
-                    zerolinecolor="#64748B",
-                    tickformat=",.0f",
-                    row=2,
-                    col=1,
-                )
-                fig_obl_comp.update_yaxes(
-                    title_text="Parcela",
-                    categoryorder="array",
-                    categoryarray=viz_df["Parcela"].tolist()[::-1],
-                    tickmode="array",
-                    tickvals=viz_df["Parcela"].tolist(),
-                    ticktext=viz_df["Parcela"].tolist(),
-                    tickfont=dict(size=12),
-                    row=1,
-                    col=1,
-                )
-                fig_obl_comp.update_yaxes(
-                    title_text="Parcela",
-                    categoryorder="array",
-                    categoryarray=viz_df["Parcela"].tolist()[::-1],
-                    tickmode="array",
-                    tickvals=viz_df["Parcela"].tolist(),
-                    ticktext=viz_df["Parcela"].tolist(),
-                    tickfont=dict(size=12),
-                    row=2,
-                    col=1,
-                )
-                fig_obl_comp.add_annotation(
-                    x=1,
-                    y=1.06,
-                    xref="paper",
-                    yref="paper",
-                    text=f"Obligación referencial por parcela: ${gc_total_parcela:,.0f}",
-                    showarrow=False,
-                    font=dict(size=12, color="#64748B"),
-                    xanchor="right",
-                )
-                st.plotly_chart(fig_obl_comp, use_container_width=True)
+
+            st.markdown(
+                f"""
+                <style>
+                .obl-compare-shell {{
+                  background:#fff;
+                  border:1px solid #e1e8f1;
+                  border-radius:10px;
+                  box-shadow:0 10px 24px rgba(15,23,42,.07);
+                  padding:18px;
+                  margin:8px 0 24px 0;
+                }}
+                .obl-compare-head {{
+                  display:grid;
+                  grid-template-columns:minmax(0,1fr) auto;
+                  gap:16px;
+                  align-items:start;
+                  padding:0 2px 14px 2px;
+                  border-bottom:1px solid #e8edf4;
+                }}
+                .obl-compare-title {{
+                  color:#172033;
+                  font-size:18px;
+                  line-height:1.2;
+                  font-weight:900;
+                }}
+                .obl-compare-sub {{
+                  color:#667085;
+                  font-size:12px;
+                  font-weight:800;
+                  margin-top:5px;
+                }}
+                .obl-compare-tools {{
+                  display:flex;
+                  gap:7px;
+                }}
+                .obl-compare-tool {{
+                  width:30px;
+                  height:30px;
+                  border:1px solid #dfe7f1;
+                  border-radius:8px;
+                  display:grid;
+                  place-items:center;
+                  color:#253247;
+                  background:#fff;
+                  box-shadow:0 3px 9px rgba(15,23,42,.05);
+                  font-weight:900;
+                }}
+                .obl-compare-grid {{
+                  display:grid;
+                  grid-template-columns:minmax(0, 1.72fr) minmax(260px, .78fr);
+                  gap:18px;
+                  align-items:stretch;
+                  padding-top:16px;
+                }}
+                .obl-compare-main {{
+                  min-width:0;
+                }}
+                .obl-compare-labels,
+                .obl-compare-row {{
+                  display:grid;
+                  grid-template-columns:46px minmax(260px,1fr) 74px minmax(120px,.36fr) 58px;
+                  gap:10px;
+                  align-items:center;
+                }}
+                .obl-compare-labels {{
+                  color:#667085;
+                  font-size:10px;
+                  font-weight:900;
+                  letter-spacing:.04em;
+                  text-transform:uppercase;
+                  margin-bottom:8px;
+                }}
+                .obl-compare-row {{
+                  min-height:28px;
+                  border-bottom:1px solid #edf2f7;
+                }}
+                .obl-compare-parcel {{
+                  width:30px;
+                  height:20px;
+                  border-radius:999px;
+                  background:#eef3f8;
+                  color:#34445b;
+                  display:grid;
+                  place-items:center;
+                  font-size:12px;
+                  font-weight:900;
+                }}
+                .obl-bars {{
+                  position:relative;
+                  height:18px;
+                  border-radius:999px;
+                  background:#f1f5f9;
+                  overflow:hidden;
+                }}
+                .obl-bar {{
+                  position:absolute;
+                  left:0;
+                  top:0;
+                  height:100%;
+                  border-radius:999px;
+                }}
+                .obl-bar-obligation {{
+                  background:#d8e1ec;
+                }}
+                .obl-bar-paid {{
+                  background:linear-gradient(90deg,#1f9d62,#0f7d4b);
+                  display:flex;
+                  align-items:center;
+                  justify-content:flex-end;
+                  min-width:24px;
+                  z-index:2;
+                }}
+                .obl-bar-paid span {{
+                  color:#fff;
+                  font-size:10px;
+                  font-weight:900;
+                  padding-right:6px;
+                }}
+                .obl-compare-amount,
+                .obl-gap-label {{
+                  color:#172033;
+                  font-size:11px;
+                  font-weight:900;
+                  text-align:right;
+                  white-space:nowrap;
+                }}
+                .obl-gap-track {{
+                  height:10px;
+                  border-radius:999px;
+                  background:#f1f5f9;
+                  overflow:hidden;
+                }}
+                .obl-gap {{
+                  height:100%;
+                  border-radius:999px;
+                }}
+                .obl-gap-pending {{ background:#dc2626; }}
+                .obl-gap-favor {{ background:#0ea5a4; }}
+                .obl-compare-side {{
+                  display:grid;
+                  grid-template-rows:auto auto minmax(0,1fr);
+                  gap:12px;
+                  min-width:0;
+                }}
+                .obl-side-card {{
+                  border:1px solid #e2e8f0;
+                  border-radius:10px;
+                  padding:14px;
+                  background:#fbfdff;
+                }}
+                .obl-side-kpi {{
+                  display:grid;
+                  grid-template-columns:44px minmax(0,1fr);
+                  gap:12px;
+                  align-items:center;
+                }}
+                .obl-side-icon {{
+                  width:44px;
+                  height:44px;
+                  border-radius:12px;
+                  display:grid;
+                  place-items:center;
+                  background:#e4efff;
+                  color:#0f6bff;
+                  font-weight:900;
+                  font-size:21px;
+                }}
+                .obl-side-label {{
+                  color:#667085;
+                  font-size:11px;
+                  font-weight:900;
+                  text-transform:uppercase;
+                }}
+                .obl-side-value {{
+                  color:#172033;
+                  font-size:22px;
+                  line-height:1.1;
+                  font-weight:900;
+                  margin-top:4px;
+                }}
+                .obl-side-note {{
+                  color:#667085;
+                  font-size:11px;
+                  font-weight:800;
+                  margin-top:5px;
+                }}
+                .obl-legend {{
+                  display:grid;
+                  grid-template-columns:1fr 1fr;
+                  gap:8px;
+                  margin-top:10px;
+                }}
+                .obl-legend span {{
+                  color:#536179;
+                  font-size:11px;
+                  font-weight:900;
+                  display:flex;
+                  align-items:center;
+                  gap:7px;
+                }}
+                .obl-legend i {{
+                  width:10px;
+                  height:10px;
+                  border-radius:999px;
+                  display:inline-block;
+                }}
+                .obl-year-row {{
+                  display:grid;
+                  grid-template-columns:42px minmax(0,1fr) 58px;
+                  gap:10px;
+                  align-items:center;
+                  min-height:28px;
+                  color:#172033;
+                  font-size:11px;
+                  font-weight:900;
+                  border-bottom:1px solid #edf2f7;
+                }}
+                .obl-year-row div {{
+                  height:9px;
+                  background:#edf2f7;
+                  border-radius:999px;
+                  overflow:hidden;
+                }}
+                .obl-year-row i {{
+                  display:block;
+                  height:100%;
+                  border-radius:999px;
+                  background:#5764d9;
+                }}
+                .obl-year-row b {{
+                  text-align:right;
+                  white-space:nowrap;
+                }}
+                @media(max-width:1100px){{
+                  .obl-compare-grid {{ grid-template-columns:1fr; }}
+                  .obl-compare-labels,
+                  .obl-compare-row {{ grid-template-columns:42px minmax(180px,1fr) 68px; }}
+                  .obl-compare-labels div:nth-child(4),
+                  .obl-compare-labels div:nth-child(5),
+                  .obl-gap-track,
+                  .obl-gap-label {{ display:none; }}
+                }}
+                @media(max-width:700px){{
+                  .obl-compare-head {{ grid-template-columns:1fr; }}
+                  .obl-compare-shell {{ padding:14px; }}
+                  .obl-compare-labels,
+                  .obl-compare-row {{ grid-template-columns:38px minmax(150px,1fr) 64px; gap:8px; }}
+                  .obl-legend {{ grid-template-columns:1fr; }}
+                }}
+                </style>
+                <div class="obl-compare-shell">
+                  <div class="obl-compare-head">
+                    <div>
+                      <div class="obl-compare-title">Cobertura de obligaciones por parcela</div>
+                      <div class="obl-compare-sub">Parcelas 17 al 36 · obligación referencial por parcela {_money_short(gc_total_parcela)}</div>
+                    </div>
+                    <div class="obl-compare-tools"><span class="obl-compare-tool">▣</span><span class="obl-compare-tool">⛶</span><span class="obl-compare-tool">⋮</span></div>
+                  </div>
+                  <div class="obl-compare-grid">
+                    <div class="obl-compare-main">
+                      <div class="obl-compare-labels"><div>Parc.</div><div>Obligación / Pagado</div><div>Pagado</div><div>Brecha</div><div>Monto</div></div>
+                      {''.join(chart_rows)}
+                    </div>
+                    <div class="obl-compare-side">
+                      <div class="obl-side-card obl-side-kpi">
+                        <div class="obl-side-icon">%</div>
+                        <div>
+                          <div class="obl-side-label">Cumplimiento total</div>
+                          <div class="obl-side-value">{coverage_total:.0f}%</div>
+                          <div class="obl-side-note">{_money_short(paid_total)} pagado de {_money_short(obligation_total)}</div>
+                        </div>
+                      </div>
+                      <div class="obl-side-card">
+                        <div class="obl-side-label">Leyenda</div>
+                        <div class="obl-legend">
+                          <span><i style="background:#d8e1ec"></i>Obligación</span>
+                          <span><i style="background:#0f7d4b"></i>Pagado</span>
+                          <span><i style="background:#dc2626"></i>Pendiente</span>
+                          <span><i style="background:#0ea5a4"></i>Saldo a favor</span>
+                        </div>
+                      </div>
+                      <div class="obl-side-card">
+                        <div class="obl-side-label">Obligación por año</div>
+                        {''.join(year_rows) if year_rows else '<div class="obl-side-note">Sin datos por año.</div>'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
 
             tabla_show = tabla_full.copy()
             tabla_show = tabla_show.rename(
