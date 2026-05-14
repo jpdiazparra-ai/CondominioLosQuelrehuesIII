@@ -1775,26 +1775,24 @@ def run_streamlit():
                 year = int(row["anio"])
                 net_class = " class='net-negative'" if float(row["neto"]) < 0 else ""
                 table_rows.append(
-                    f"""
-                    <tr>
-                      <td><span class="year-dot" style="background:{color_for_year[year]}"></span>{year}</td>
-                      <td>{_money(float(row["ingresos"]))}</td>
-                      <td>{_money(float(row["costos"]))}</td>
-                      <td{net_class}>{_money(float(row["neto"]))}</td>
-                    </tr>
-                    """
+                    "<tr>"
+                    f"<td><span class=\"year-dot\" style=\"background:{color_for_year[year]}\"></span>{year}</td>"
+                    f"<td>{_money(float(row['ingresos']))}</td>"
+                    f"<td>{_money(float(row['costos']))}</td>"
+                    f"<td{net_class}>{_money(float(row['neto']))}</td>"
+                    "</tr>"
                 )
-            table_html = f"""
-              <div class="finance-card">
-                <div class="finance-card-title">Resumen por año <span class="finance-info">i</span></div>
-                <div class="year-table-wrap">
-                  <table class="year-table">
-                    <thead><tr><th>Año</th><th>Ingresos (CLP)</th><th>Costos (CLP)</th><th>Neto (CLP)</th></tr></thead>
-                    <tbody>{''.join(table_rows)}</tbody>
-                  </table>
-                </div>
-              </div>
-            """
+            table_html = (
+                "<div class=\"finance-card\">"
+                "<div class=\"finance-card-title\">Resumen por año <span class=\"finance-info\">i</span></div>"
+                "<div class=\"year-table-wrap\">"
+                "<table class=\"year-table\">"
+                "<thead><tr><th>Año</th><th>Ingresos (CLP)</th><th>Costos (CLP)</th><th>Neto (CLP)</th></tr></thead>"
+                f"<tbody>{''.join(table_rows)}</tbody>"
+                "</table>"
+                "</div>"
+                "</div>"
+            )
 
             pie_df = df_y.copy()
             pie_df["anio_int"] = pie_df["anio"].astype(int)
@@ -1836,19 +1834,17 @@ def run_streamlit():
             for _, row in pie_df.iterrows():
                 year = int(row["anio_int"])
                 legend_rows.append(
-                    f"""
-                    <div class="donut-legend-row">
-                      <div><span class="year-dot" style="background:{color_for_year[year]}; margin-right:10px;"></span>{year}</div>
-                      <div>{_money(float(row["ingresos"]))}</div>
-                    </div>
-                    """
+                    "<div class=\"donut-legend-row\">"
+                    f"<div><span class=\"year-dot\" style=\"background:{color_for_year[year]}; margin-right:10px;\"></span>{year}</div>"
+                    f"<div>{_money(float(row['ingresos']))}</div>"
+                    "</div>"
                 )
-            legend_html = f"""
-              <div>
-                <div class="donut-legend-title"><div>Año</div><div>Ingresos (CLP)</div></div>
-                {''.join(legend_rows)}
-              </div>
-            """
+            legend_html = (
+                "<div>"
+                "<div class=\"donut-legend-title\"><div>Año</div><div>Ingresos (CLP)</div></div>"
+                f"{''.join(legend_rows)}"
+                "</div>"
+            )
 
             left_tbl, right_pie = st.columns([1.05, 0.88])
             with left_tbl:
