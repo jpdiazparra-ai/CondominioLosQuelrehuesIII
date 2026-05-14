@@ -3366,6 +3366,9 @@ def run_streamlit():
                   box-shadow:0 10px 24px rgba(15,23,42,.07);
                   padding:14px 16px 16px 16px;
                 }
+                div[data-testid="stVerticalBlockBorderWrapper"]:has(.gc-pie-head) {
+                  min-height:578px;
+                }
                 .gc-pie-head {
                   display:flex;
                   justify-content:space-between;
