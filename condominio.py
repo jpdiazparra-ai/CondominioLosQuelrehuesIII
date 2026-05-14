@@ -917,10 +917,9 @@ def run_streamlit():
             """,
             unsafe_allow_html=True,
         )
-        section_options = ["General", "Ingresos V2.3", "Costos", "Obligaciones"]
+        section_options = ["General", "Costos", "Obligaciones"]
         section_labels = {
             "General": "⌂\nGeneral",
-            "Ingresos V2.3": "↗\nIngresos V2.3",
             "Costos": "$\nCostos",
             "Obligaciones": "▤\nObligaciones",
         }
