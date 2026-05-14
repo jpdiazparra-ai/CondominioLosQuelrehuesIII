@@ -2195,13 +2195,19 @@ def run_streamlit():
             .cost-bg-green { background:#e3f4eb; color:#128a55; }
             .cost-card {
               background:#fff; border:1px solid #e1e8f1; border-radius:10px;
-              box-shadow:0 8px 22px rgba(15,23,42,.06); padding:16px 18px; margin-bottom:18px;
+              box-shadow:0 8px 22px rgba(15,23,42,.06); padding:12px 16px; margin-bottom:12px;
             }
-            .cost-card-head { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:8px; }
-            .cost-card-title { color:#071326; font-size:16px; line-height:1.2; font-weight:900; margin:0; }
-            .cost-info { color:#7b879d; border:1px solid #9aa6ba; width:15px; height:15px; border-radius:50%; display:inline-grid; place-items:center; font-size:10px; font-weight:900; margin-left:5px; }
+            .cost-card-head { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:4px; min-height:30px; }
+            .cost-card h2.cost-card-title,
+            h2.cost-card-title,
+            .cost-card-title {
+              color:#071326 !important; font-size:16px !important; line-height:1.2 !important;
+              font-weight:900 !important; margin:0 !important; padding:0 !important;
+              letter-spacing:0 !important;
+            }
+            .cost-info { color:#7b879d; border:1px solid #9aa6ba; width:14px; height:14px; border-radius:50%; display:inline-grid; place-items:center; font-size:9px; font-weight:900; margin-left:5px; vertical-align:middle; }
             .cost-tools { display:flex; gap:7px; }
-            .cost-tool { width:28px; height:28px; border:1px solid #dfe7f1; border-radius:7px; display:grid; place-items:center; color:#253247; font-weight:900; background:#fff; box-shadow:0 2px 7px rgba(15,23,42,.05); }
+            .cost-tool { width:26px; height:26px; border:1px solid #dfe7f1; border-radius:7px; display:grid; place-items:center; color:#253247; font-size:13px; font-weight:900; background:#fff; box-shadow:0 2px 7px rgba(15,23,42,.05); }
             .cost-panel-grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
             .cost-provider-wrap { display:grid; grid-template-columns:minmax(0,1fr) 255px; gap:14px; align-items:center; }
             .cost-provider-legend-title, .cost-provider-row { display:grid; grid-template-columns:1fr 86px; gap:10px; align-items:center; }
