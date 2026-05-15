@@ -576,9 +576,9 @@ def run_streamlit():
           color: var(--dash-ink);
         }
         .block-container {
-          padding-top: 1.15rem;
-          padding-left: 2.25rem;
-          padding-right: 2.25rem;
+          padding-top: 0.7rem;
+          padding-left: 2.1rem;
+          padding-right: 2.1rem;
           max-width: 1540px;
         }
         [data-testid="stSidebar"] {
@@ -668,13 +668,13 @@ def run_streamlit():
         .general-page-head {
           display:flex;
           justify-content:space-between;
-          align-items:flex-start;
+          align-items:center;
           gap:22px;
-          margin:0 0 22px 0;
+          margin:0 0 16px 0;
         }
         .general-title {
           color:#071326;
-          font-size:24px;
+          font-size:22px;
           line-height:1.05;
           font-weight:900;
           margin:0 !important;
@@ -691,17 +691,32 @@ def run_streamlit():
           display:flex;
           align-items:center;
           justify-content:flex-end;
-          gap:24px;
+          gap:22px;
           color:#071326;
-          font-size:24px;
+          font-size:22px;
           line-height:1;
           white-space:nowrap;
+        }
+        .general-report-btn {
+          height:44px;
+          min-width:216px;
+          border:1px solid #d8e0eb;
+          border-radius:8px;
+          background:#fff;
+          box-shadow:0 6px 14px rgba(15,23,42,.06);
+          display:flex;
+          align-items:center;
+          justify-content:center;
+          gap:10px;
+          color:#071326;
+          font-size:13px;
+          font-weight:900;
         }
         .general-icons {
           display:flex;
           align-items:center;
-          gap:24px;
-          font-size:24px;
+          gap:22px;
+          font-size:22px;
           font-weight:900;
           color:#071326;
         }
@@ -756,13 +771,13 @@ def run_streamlit():
           color:#0f172a;
         }
         .dash-hero {
-          min-height: 158px;
+          min-height: 145px;
           display: grid;
           grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1fr) 280px;
-          gap: 34px;
+          gap: 28px;
           align-items: center;
-          margin: 0 0 20px 0;
-          padding: 28px 38px;
+          margin: 0 0 16px 0;
+          padding: 22px 36px;
           border-radius: 12px;
           position: relative;
           overflow: hidden;
@@ -785,7 +800,7 @@ def run_streamlit():
         .dash-hero-label {
           position: relative;
           z-index: 1;
-          font-size: 0.76rem;
+          font-size: 0.72rem;
           letter-spacing: 0.1em;
           font-weight: 900;
           text-transform: uppercase;
@@ -793,8 +808,8 @@ def run_streamlit():
         .dash-hero-value {
           position: relative;
           z-index: 1;
-          margin-top: 10px;
-          font-size: clamp(2.2rem, 3.15vw, 3rem);
+          margin-top: 8px;
+          font-size: clamp(2rem, 2.75vw, 2.7rem);
           line-height: 0.98;
           font-weight: 900;
           text-shadow: 0 3px 0 rgba(255, 255, 255, 0.12), 0 7px 18px rgba(0, 0, 0, 0.25);
@@ -803,9 +818,9 @@ def run_streamlit():
         .dash-hero-sub {
           position: relative;
           z-index: 1;
-          margin-top: 10px;
+          margin-top: 8px;
           color: #edf7fb;
-          font-size: 0.9rem;
+          font-size: 0.82rem;
           font-weight: 700;
         }
         .dash-hero-rule {
@@ -815,7 +830,7 @@ def run_streamlit():
           position: relative;
           z-index: 1;
           width:1px;
-          height:86px;
+          height:80px;
           background: rgba(223, 244, 248, 0.45);
           justify-self:center;
           margin:0;
@@ -823,46 +838,46 @@ def run_streamlit():
         .dash-hero-secondary-value {
           position: relative;
           z-index: 1;
-          margin-top: 10px;
+          margin-top: 8px;
           color:#6ee0a4;
-          font-size: clamp(2rem, 2.8vw, 2.75rem);
+          font-size: clamp(1.95rem, 2.55vw, 2.55rem);
           font-weight: 900;
           line-height: 1;
         }
         .bank-art {
           position: relative;
           z-index: 1;
-          height: 124px;
+          height: 112px;
           display: grid;
           place-items: end center;
           opacity: 0.88;
         }
         .bank-art .bank {
           position: relative;
-          width: 148px;
-          height: 101px;
+          width: 136px;
+          height: 93px;
         }
         .bank-roof {
           position: absolute;
           left: 11px;
           top: 3px;
-          width: 126px;
-          height: 32px;
+          width: 116px;
+          height: 30px;
           background: #86dce1;
           clip-path: polygon(50% 0%, 100% 72%, 95% 100%, 5% 100%, 0% 72%);
           box-shadow: inset 0 -6px 0 rgba(14, 84, 98, 0.18);
         }
         .bank-row {
           position: absolute;
-          left: 17px;
-          top: 41px;
-          width: 115px;
+          left: 15px;
+          top: 38px;
+          width: 106px;
           display: grid;
           grid-template-columns: repeat(4, 1fr);
           gap: 12px;
         }
         .bank-col {
-          height: 54px;
+          height: 50px;
           border-radius: 8px 8px 2px 2px;
           background: linear-gradient(180deg, #9be8e9, #5dc5cb);
           box-shadow: inset 7px 0 0 rgba(255,255,255,0.18);
@@ -871,7 +886,7 @@ def run_streamlit():
           position: absolute;
           left: 5px;
           bottom: 0;
-          width: 139px;
+          width: 128px;
           height: 13px;
           border-radius: 3px;
           background: #a8edf0;
@@ -879,32 +894,32 @@ def run_streamlit():
         }
         .bank-coin {
           position: absolute;
-          left: 50px;
-          top: 68px;
-          width: 44px;
-          height: 44px;
+          left: 46px;
+          top: 63px;
+          width: 40px;
+          height: 40px;
           border-radius: 50%;
           display: grid;
           place-items: center;
           background: #ecffff;
           color: #0c6671;
-          font-size: 24px;
+          font-size: 22px;
           font-weight: 900;
           box-shadow: 0 0 0 6px rgba(129, 218, 224, 0.74);
         }
         .dash-kpi-grid {
           display: grid;
           grid-template-columns: repeat(6, minmax(0, 1fr));
-          gap: 12px;
-          margin: 0 0 26px 0;
+          gap: 10px;
+          margin: 0 0 16px 0;
         }
         .dash-kpi-card {
-          min-height: 150px;
+          min-height: 120px;
           background: #ffffff;
           border: 1px solid #e2eaf4;
           border-top: 4px solid var(--tone);
           border-radius: 12px;
-          padding: 15px 14px 10px 14px;
+          padding: 12px 13px 8px 13px;
           box-shadow: 0 9px 20px rgba(15,23,42,0.08);
           overflow: hidden;
         }
@@ -914,42 +929,42 @@ def run_streamlit():
         .dash-teal { --tone: #008b78; }
         .dash-blue { --tone: #0f6bff; }
         .dash-icon {
-          height: 46px;
-          width: 46px;
+          height: 38px;
+          width: 38px;
           border-radius: 50%;
           display: grid;
           place-items: center;
           color: var(--tone);
           background: color-mix(in srgb, var(--tone) 15%, white);
-          font-size: 20px;
+          font-size: 17px;
           font-weight: 900;
-          margin-bottom: 12px;
+          margin-bottom: 8px;
         }
         .dash-kpi-title {
           color: #3d485c;
-          font-size: 0.58rem;
+          font-size: 0.54rem;
           font-weight: 900;
           text-transform: uppercase;
           line-height: 1.25;
         }
         .dash-kpi-value {
-          margin-top: 8px;
+          margin-top: 6px;
           color: #071326;
-          font-size: clamp(1.18rem, 1.45vw, 1.42rem);
+          font-size: clamp(1rem, 1.25vw, 1.28rem);
           line-height: 1.05;
           font-weight: 900;
         }
         .dash-kpi-sub {
-          margin-top: 10px;
+          margin-top: 7px;
           color: var(--tone);
-          font-size: 0.64rem;
+          font-size: 0.58rem;
           font-weight: 700;
           min-height: 16px;
         }
         .dash-sparkline {
           width: 100%;
-          height: 28px;
-          margin-top: 12px;
+          height: 22px;
+          margin-top: 7px;
         }
         @media (max-width: 1300px) {
           .dash-kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -1356,41 +1371,21 @@ def run_streamlit():
         return report_pdf
 
     if selected_section == "General":
-        col_title, col_btn, col_icons = st.columns([0.64, 0.20, 0.16], gap="medium")
-        with col_title:
-            st.markdown(
-                """
-                <div class="general-page-head">
-                  <div>
-                    <h1 class="general-title">General</h1>
-                    <div class="general-subtitle">Análisis de ingresos, costos y resultado neto del condominio.</div>
-                  </div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-        with col_btn:
-            if st.button("⇩  Descargar reporte (PDF)", key="prepare_report_pdf"):
-                try:
-                    st.session_state["report_pdf_bytes"] = _make_obligaciones_report()
-                    st.toast("Reporte listo para descargar")
-                except RuntimeError as e:
-                    st.info(str(e))
-                except Exception as e:
-                    st.error(f"No se pudo generar el reporte. Detalle: {e}")
-            report_pdf = st.session_state.get("report_pdf_bytes")
-            if report_pdf:
-                st.download_button(
-                    "⇩  Descargar reporte (PDF)",
-                    data=report_pdf,
-                    file_name="reporte_obligaciones.pdf",
-                    mime="application/pdf",
-                )
-        with col_icons:
-            st.markdown(
-                '<div class="general-icons"><span>☆</span><span>✎</span><span>◉</span><span>⋮</span></div>',
-                unsafe_allow_html=True,
-            )
+        st.markdown(
+            """
+            <div class="general-page-head">
+              <div>
+                <h1 class="general-title">General</h1>
+                <div class="general-subtitle">Análisis de ingresos, costos y resultado neto del condominio.</div>
+              </div>
+              <div class="general-actions">
+                <div class="general-report-btn"><span>⇩</span><span>Descargar reporte (PDF)</span></div>
+                <div class="general-icons"><span>☆</span><span>✎</span><span>◉</span><span>⋮</span></div>
+              </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
     if selected_section == "General":
         with st.spinner("Cargando datos generales..."):
@@ -1624,54 +1619,55 @@ def run_streamlit():
             .finance-card {
               background:#fff;
               border:1px solid #e6edf5;
-              border-radius:14px;
-              box-shadow:0 8px 22px rgba(15,23,42,.07);
-              padding:12px 16px 10px 16px;
-              margin:8px 0 10px 0;
+              border-radius:10px;
+              box-shadow:0 7px 18px rgba(15,23,42,.06);
+              padding:9px 13px 8px 13px;
+              margin:6px 0 8px 0;
             }
             .finance-card-title {
               color:#172033;
-              font-size:17px;
+              font-size:13px;
               font-weight:900;
-              margin:0 0 8px 0;
+              margin:0 0 5px 0;
               display:flex;
               align-items:center;
-              gap:10px;
+              gap:7px;
             }
             .finance-info {
               color:#7b879d;
               border:1px solid #9aa6ba;
-              width:17px;
-              height:17px;
+              width:14px;
+              height:14px;
               border-radius:50%;
               display:inline-grid;
               place-items:center;
-              font-size:11px;
+              font-size:9px;
               font-weight:800;
             }
             .finance-toolbar {
               float:right;
               display:flex;
-              gap:6px;
+              gap:5px;
               color:#344055;
-              margin-top:-4px;
+              margin-top:-2px;
             }
             .finance-tool {
-              min-width:28px;
-              height:28px;
+              min-width:24px;
+              height:24px;
               display:grid;
               place-items:center;
               border:1px solid #e1e8f1;
-              border-radius:8px;
+              border-radius:7px;
               box-shadow:0 2px 7px rgba(15,23,42,.05);
               font-weight:800;
+              font-size:11px;
             }
             div[data-testid="stHorizontalBlock"] > div[data-testid="column"] [data-testid="stVerticalBlockBorderWrapper"] {
-              border-radius:14px;
-              box-shadow:0 8px 22px rgba(15,23,42,.07);
+              border-radius:10px;
+              box-shadow:0 7px 18px rgba(15,23,42,.06);
             }
             div[data-testid="stHorizontalBlock"] > div[data-testid="column"] [data-testid="stVerticalBlockBorderWrapper"] > div {
-              padding:12px 16px 10px 16px;
+              padding:9px 13px 8px 13px;
             }
             .summary-grid {
               display:grid;
@@ -1683,12 +1679,12 @@ def run_streamlit():
               border:1px solid #e3e9f2;
               border-radius:10px;
               overflow:hidden;
-              margin-top:8px;
+              margin-top:5px;
             }
             .year-table {
               width:100%;
               border-collapse:collapse;
-              font-size:12px;
+              font-size:10px;
               color:#182236;
             }
             .year-table th {
@@ -1696,16 +1692,16 @@ def run_streamlit():
               color:#59657a;
               font-weight:700;
               text-align:left;
-              padding:8px 11px;
+              padding:5px 9px;
               border-bottom:1px solid #e3e9f2;
             }
             .year-table td {
-              padding:7px 11px;
+              padding:4px 9px;
               border-bottom:1px solid #e8edf4;
             }
             .year-dot {
-              width:9px;
-              height:9px;
+              width:8px;
+              height:8px;
               border-radius:999px;
               display:inline-block;
               margin-right:14px;
@@ -1714,8 +1710,8 @@ def run_streamlit():
             .net-negative { color:#e12626; }
             .donut-shell {
               display:grid;
-              grid-template-columns:minmax(0, 1fr) 260px;
-              gap:20px;
+              grid-template-columns:minmax(0, 1fr) 220px;
+              gap:14px;
               align-items:center;
             }
             .donut-legend-title,
@@ -1727,19 +1723,19 @@ def run_streamlit():
             }
             .donut-legend-title {
               color:#59657a;
-              font-size:12px;
+              font-size:10px;
               font-weight:800;
               margin-bottom:5px;
             }
             .donut-legend-row {
               color:#172033;
-              font-size:12px;
-              padding:5px 0;
+              font-size:10px;
+              padding:3px 0;
               border-bottom:1px solid #e8edf4;
             }
             .finance-section-title {
               color:#071326;
-              font-size:22px;
+              font-size:20px;
               line-height:1.2;
               font-weight:900;
               margin:0 !important;
@@ -1750,7 +1746,7 @@ def run_streamlit():
               align-items:center;
               justify-content:space-between;
               gap:16px;
-              margin:0 0 10px 0;
+              margin:0 0 8px 0;
             }
             .finance-section-actions {
               display:flex;
@@ -1759,7 +1755,7 @@ def run_streamlit():
             }
             .finance-filter-pill {
               min-width:128px;
-              height:34px;
+              height:30px;
               border:1px solid #dfe7f1;
               border-radius:7px;
               background:#fff;
@@ -1769,12 +1765,12 @@ def run_streamlit():
               gap:12px;
               padding:0 14px;
               color:#172033;
-              font-size:13px;
+              font-size:11px;
               font-weight:800;
               box-shadow:0 3px 10px rgba(15,23,42,.04);
             }
             .finance-filter-btn {
-              height:34px;
+              height:30px;
               border:1px solid #dfe7f1;
               border-radius:7px;
               background:#fff;
@@ -1784,7 +1780,7 @@ def run_streamlit():
               gap:8px;
               padding:0 14px;
               color:#172033;
-              font-size:13px;
+              font-size:11px;
               font-weight:800;
               box-shadow:0 3px 10px rgba(15,23,42,.04);
             }
@@ -1836,7 +1832,7 @@ def run_streamlit():
 
             def _make_year_bars(data: pd.DataFrame, title: str):
                 fig = go.Figure()
-                for col, label in [("ingresos", "Ingresos"), ("costos", "Costos"), ("neto", "Neto")]:
+                for col, label in [("ingresos", "Ingresos"), ("costos", "Costos")]:
                     fig.add_trace(
                         go.Bar(
                             x=data["anio"].astype(str),
@@ -1850,32 +1846,44 @@ def run_streamlit():
                             cliponaxis=False,
                         )
                     )
+                fig.add_trace(
+                    go.Scatter(
+                        x=data["anio"].astype(str),
+                        y=data["neto"],
+                        name="Neto",
+                        mode="lines+markers",
+                        line=dict(color=series_colors["Neto"], width=2),
+                        marker=dict(color=series_colors["Neto"], size=6),
+                        hovertemplate="Neto<br>Año %{x}<br>%{y:,.0f} CLP<extra></extra>",
+                    )
+                )
                 ticks, ticktext = _axis_ticks(data[["ingresos", "costos", "neto"]].to_numpy().ravel())
                 fig.update_layout(
                     barmode="group",
-                    bargap=0.32,
-                    bargroupgap=0.12,
-                    height=250,
+                    bargap=0.38,
+                    bargroupgap=0.14,
+                    height=180,
                     plot_bgcolor="#ffffff",
                     paper_bgcolor="#ffffff",
-                    font=dict(family="Inter, Arial, sans-serif", color="#536078", size=11),
-                    margin=dict(l=42, r=12, t=14, b=42),
+                    font=dict(family="Inter, Arial, sans-serif", color="#536078", size=9),
+                    margin=dict(l=38, r=8, t=8, b=30),
                     legend=dict(
                         orientation="h",
                         yanchor="bottom",
-                        y=1.03,
+                        y=1.02,
                         xanchor="left",
                         x=0,
                         title_text="",
-                        font=dict(size=11, color="#334155"),
+                        font=dict(size=9, color="#334155"),
                     ),
+                    showlegend=True,
                     hovermode="x unified",
-                    title=None,
+                    title=dict(text=""),
                 )
                 fig.update_xaxes(
                     title_text="Año",
-                    title_font=dict(size=12, color="#59657a"),
-                    tickfont=dict(size=11, color="#68738a"),
+                    title_font=dict(size=9, color="#59657a"),
+                    tickfont=dict(size=9, color="#68738a"),
                     showline=True,
                     linecolor="#d9e1eb",
                     showgrid=False,
@@ -1883,15 +1891,15 @@ def run_streamlit():
                 )
                 fig.update_yaxes(
                     title_text="Monto (CLP)",
-                    title_font=dict(size=12, color="#59657a"),
+                    title_font=dict(size=9, color="#59657a"),
                     tickvals=ticks,
                     ticktext=ticktext,
-                    tickfont=dict(size=10, color="#68738a"),
+                    tickfont=dict(size=8, color="#68738a"),
                     gridcolor="#dfe6ef",
                     griddash="dot",
                     zeroline=True,
                     zerolinecolor="#d1d9e4",
-                    range=[min(ticks) - 300_000, max(ticks) + 420_000],
+                    range=[min(ticks) - 200_000, max(ticks) + 260_000],
                 )
                 return fig
 
@@ -1984,7 +1992,7 @@ def run_streamlit():
                 ]
             )
             fig_pie_y.update_layout(
-                height=250,
+                height=185,
                 showlegend=False,
                 paper_bgcolor="#ffffff",
                 plot_bgcolor="#ffffff",
@@ -1995,7 +2003,7 @@ def run_streamlit():
                         showarrow=False,
                         x=0.5,
                         y=0.5,
-                        font=dict(size=14, color="#344055", family="Inter, Arial, sans-serif"),
+                        font=dict(size=11, color="#344055", family="Inter, Arial, sans-serif"),
                     )
                 ],
             )
@@ -2016,7 +2024,7 @@ def run_streamlit():
                 "</div>"
             )
 
-            left_tbl, right_pie = st.columns([1.05, 0.88])
+            left_tbl, right_pie = st.columns([1.05, 0.88], gap="medium")
             with left_tbl:
                 st.markdown(table_html, unsafe_allow_html=True)
             with right_pie:
