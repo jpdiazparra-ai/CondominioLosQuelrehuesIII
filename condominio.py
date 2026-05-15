@@ -2343,66 +2343,66 @@ def run_streamlit():
         st.markdown(
             """
             <style>
-            .cost-page-head { margin:0 0 18px 0; }
-            .cost-page-title { color:#071326; font-size:22px; line-height:1.15; font-weight:900; margin:0; }
-            .cost-section-title { color:#071326; font-size:15px; font-weight:900; margin:18px 0 12px 0; }
-            .cost-kpi-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:18px; margin:0 0 20px 0; }
+            .cost-page-head { margin:0 0 8px 0; }
+            .cost-page-title { color:#071326; font-size:18px; line-height:1.1; font-weight:900; margin:0; }
+            .cost-section-title { color:#52647f; font-size:12px; line-height:1.3; font-weight:600; margin:8px 0 6px 0; }
+            .cost-kpi-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin:0 0 10px 0; }
             .cost-kpi-card {
-              background:#fff; border:1px solid #e1e8f1; border-radius:10px; min-height:118px;
-              box-shadow:0 8px 22px rgba(15,23,42,.06); padding:19px 20px; display:grid;
-              grid-template-columns:54px minmax(0,1fr); gap:15px; align-items:center;
+              background:#fff; border:1px solid #e1e8f1; border-radius:10px; min-height:82px;
+              box-shadow:0 7px 18px rgba(15,23,42,.06); padding:9px 11px; display:grid;
+              grid-template-columns:34px minmax(0,1fr); gap:10px; align-items:center;
             }
-            .cost-kpi-icon { width:52px; height:52px; border-radius:13px; display:grid; place-items:center; font-size:26px; font-weight:900; }
-            .cost-kpi-label { color:#52647f; font-size:12px; font-weight:800; margin-bottom:8px; }
-            .cost-kpi-value { color:#071326; font-size:21px; line-height:1.2; font-weight:900; overflow-wrap:anywhere; }
-            .cost-kpi-sub { color:#667085; font-size:11px; font-weight:700; margin-top:10px; }
+            .cost-kpi-icon { width:32px; height:32px; border-radius:9px; display:grid; place-items:center; font-size:16px; font-weight:900; }
+            .cost-kpi-label { color:#52647f; font-size:9px; font-weight:800; margin-bottom:4px; }
+            .cost-kpi-value { color:#071326; font-size:15px; line-height:1.15; font-weight:900; overflow-wrap:anywhere; }
+            .cost-kpi-sub { color:#667085; font-size:9px; font-weight:700; margin-top:5px; }
             .cost-red { color:#e12626; } .cost-teal { color:#0089a3; } .cost-green { color:#128a55; }
             .cost-bg-red { background:#ffe5e8; color:#e12626; } .cost-bg-teal { background:#e4f5f8; color:#0089a3; }
             .cost-bg-green { background:#e3f4eb; color:#128a55; }
             .cost-card {
               background:#fff; border:1px solid #e1e8f1; border-radius:10px;
-              box-shadow:0 8px 22px rgba(15,23,42,.06); padding:12px 16px; margin-bottom:12px;
+              box-shadow:0 7px 18px rgba(15,23,42,.06); padding:6px 10px; margin-bottom:6px;
             }
-            .cost-card-head { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:4px; min-height:30px; }
+            .cost-card-head { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:2px; min-height:22px; }
             .cost-card h2.cost-card-title,
             h2.cost-card-title,
             .cost-card-title {
-              color:#071326 !important; font-size:16px !important; line-height:1.2 !important;
+              color:#071326 !important; font-size:12px !important; line-height:1.15 !important;
               font-weight:900 !important; margin:0 !important; padding:0 !important;
               letter-spacing:0 !important;
             }
-            .cost-info { color:#7b879d; border:1px solid #9aa6ba; width:14px; height:14px; border-radius:50%; display:inline-grid; place-items:center; font-size:9px; font-weight:900; margin-left:5px; vertical-align:middle; }
-            .cost-tools { display:flex; gap:7px; }
-            .cost-tool { width:26px; height:26px; border:1px solid #dfe7f1; border-radius:7px; display:grid; place-items:center; color:#253247; font-size:13px; font-weight:900; background:#fff; box-shadow:0 2px 7px rgba(15,23,42,.05); }
-            .cost-panel-grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
-            .cost-provider-wrap { display:grid; grid-template-columns:minmax(0,1fr) 255px; gap:14px; align-items:center; }
-            .cost-provider-legend-title, .cost-provider-row { display:grid; grid-template-columns:1fr 86px; gap:10px; align-items:center; }
-            .cost-provider-legend-title { color:#667085; font-size:10px; font-weight:900; margin-bottom:6px; }
-            .cost-provider-row { color:#172033; font-size:11px; font-weight:800; padding:5px 0; border-bottom:1px solid #e8edf4; }
-            .cost-dot { width:9px; height:9px; display:inline-block; border-radius:999px; margin-right:8px; }
-            .cost-panel-footer { display:flex; justify-content:space-between; align-items:center; color:#071326; font-size:12px; font-weight:800; border:1px solid #e8edf4; border-radius:8px; padding:10px 14px; margin-top:10px; }
-            .cost-table-toolbar { display:flex; justify-content:space-between; align-items:center; gap:14px; margin:4px 0 14px 0; }
-            .cost-table-actions { display:flex; gap:8px; align-items:center; }
+            .cost-info { color:#7b879d; border:1px solid #9aa6ba; width:13px; height:13px; border-radius:50%; display:inline-grid; place-items:center; font-size:8px; font-weight:900; margin-left:4px; vertical-align:middle; }
+            .cost-tools { display:flex; gap:5px; }
+            .cost-tool { width:21px; height:21px; border:1px solid #dfe7f1; border-radius:7px; display:grid; place-items:center; color:#253247; font-size:10px; font-weight:900; background:#fff; box-shadow:0 2px 7px rgba(15,23,42,.05); }
+            .cost-panel-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+            .cost-provider-wrap { display:grid; grid-template-columns:minmax(0,1fr) 205px; gap:10px; align-items:center; }
+            .cost-provider-legend-title, .cost-provider-row { display:grid; grid-template-columns:1fr 72px; gap:8px; align-items:center; }
+            .cost-provider-legend-title { color:#667085; font-size:9px; font-weight:900; margin-bottom:3px; }
+            .cost-provider-row { color:#172033; font-size:9px; font-weight:800; padding:2px 0; border-bottom:1px solid #e8edf4; }
+            .cost-dot { width:8px; height:8px; display:inline-block; border-radius:999px; margin-right:6px; }
+            .cost-panel-footer { display:flex; justify-content:space-between; align-items:center; color:#071326; font-size:10px; font-weight:800; border:1px solid #e8edf4; border-radius:7px; padding:5px 9px; margin-top:5px; }
+            .cost-table-toolbar { display:flex; justify-content:space-between; align-items:center; gap:10px; margin:2px 0 6px 0; }
+            .cost-table-actions { display:flex; gap:6px; align-items:center; }
             .cost-search, .cost-filter {
-              height:36px; border:1px solid #dfe7f1; border-radius:8px; background:#fff; display:flex;
-              align-items:center; gap:8px; color:#667085; font-size:12px; font-weight:700; padding:0 13px;
+              height:26px; border:1px solid #dfe7f1; border-radius:7px; background:#fff; display:flex;
+              align-items:center; gap:6px; color:#667085; font-size:10px; font-weight:700; padding:0 10px;
             }
-            .cost-search { min-width:250px; justify-content:flex-start; }
-            .cost-filter { min-width:100px; justify-content:center; color:#263449; }
+            .cost-search { min-width:190px; justify-content:flex-start; }
+            .cost-filter { min-width:82px; justify-content:center; color:#263449; }
             .cost-table-wrap { border:1px solid #e1e8f1; border-radius:10px; overflow:hidden; }
-            .cost-table { width:100%; border-collapse:separate; border-spacing:0; color:#172033; font-size:11px; }
+            .cost-table { width:100%; border-collapse:separate; border-spacing:0; color:#172033; font-size:9px; }
             .cost-table th {
-              height:34px; background:#f7f9fc; color:#52647f; text-align:left; font-weight:900;
-              padding:0 10px; border-bottom:1px solid #e2e8f0; border-right:1px solid #e8edf4; white-space:nowrap;
+              height:24px; background:#f7f9fc; color:#52647f; text-align:left; font-weight:900;
+              padding:0 7px; border-bottom:1px solid #e2e8f0; border-right:1px solid #e8edf4; white-space:nowrap;
             }
             .cost-table td {
-              height:32px; padding:0 10px; border-bottom:1px solid #eef2f7; border-right:1px solid #eef2f7;
+              height:23px; padding:0 7px; border-bottom:1px solid #eef2f7; border-right:1px solid #eef2f7;
               font-weight:800; white-space:nowrap;
             }
             .cost-num { text-align:right; color:#e12626; }
-            .cost-footer { min-height:52px; padding:0 12px; display:flex; justify-content:space-between; align-items:center; color:#667085; font-size:11px; font-weight:800; border-top:1px solid #e8edf4; }
-            .cost-pages { display:flex; align-items:center; gap:7px; }
-            .cost-page { min-height:28px; min-width:30px; border:1px solid #dfe7f1; border-radius:7px; display:flex; align-items:center; justify-content:center; padding:0 10px; background:#fff; color:#263449; }
+            .cost-footer { min-height:34px; padding:0 9px; display:flex; justify-content:space-between; align-items:center; color:#667085; font-size:9px; font-weight:800; border-top:1px solid #e8edf4; }
+            .cost-pages { display:flex; align-items:center; gap:5px; }
+            .cost-page { min-height:22px; min-width:24px; border:1px solid #dfe7f1; border-radius:6px; display:flex; align-items:center; justify-content:center; padding:0 7px; background:#fff; color:#263449; }
             .cost-page.active { background:#00728d; color:#fff; border-color:#00728d; }
             @media(max-width:1200px){ .cost-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.cost-panel-grid,.cost-provider-wrap{grid-template-columns:1fr;}.cost-table-wrap{overflow-x:auto;} }
             @media(max-width:760px){ .cost-kpi-grid{grid-template-columns:1fr;}.cost-table-toolbar{display:block;}.cost-table-actions{margin-top:10px; flex-wrap:wrap;}.cost-search{min-width:100%;} }
@@ -2497,14 +2497,14 @@ def run_streamlit():
                     secondary_y=True,
                 )
                 fig_p.update_layout(
-                    height=390,
+                    height=175,
                     barmode="relative",
                     hovermode="x unified",
                     plot_bgcolor="#ffffff",
                     paper_bgcolor="#ffffff",
-                    margin=dict(l=44, r=50, t=14, b=48),
-                    legend=dict(orientation="h", y=1.08, x=0, font=dict(size=11)),
-                    font=dict(family="Inter, Arial, sans-serif", color="#52647f", size=11),
+                    margin=dict(l=36, r=38, t=4, b=28),
+                    legend=dict(orientation="h", y=1.02, x=0, font=dict(size=8)),
+                    font=dict(family="Inter, Arial, sans-serif", color="#52647f", size=8),
                 )
                 fig_p.update_xaxes(showgrid=False, tickangle=0, nticks=8)
                 fig_p.update_yaxes(title_text="Costo (CLP)", gridcolor="#e5ebf3", zeroline=True, zerolinecolor="#ccd6e3", secondary_y=False)
@@ -2548,12 +2548,12 @@ def run_streamlit():
                     yaxis=dict(title="Costo (CLP)", gridcolor="#e5ebf3", zeroline=True),
                     yaxis2=dict(title="% acumulado", overlaying="y", side="right", range=[0, 105], ticksuffix="%"),
                     hovermode="x unified",
-                    height=330,
-                    margin=dict(l=45, r=45, t=12, b=42),
+                    height=155,
+                    margin=dict(l=34, r=34, t=4, b=24),
                     plot_bgcolor="#ffffff",
                     paper_bgcolor="#ffffff",
-                    legend=dict(orientation="h", y=1.08, x=0, font=dict(size=10)),
-                    font=dict(family="Inter, Arial, sans-serif", color="#52647f", size=10),
+                    legend=dict(orientation="h", y=1.02, x=0, font=dict(size=8)),
+                    font=dict(family="Inter, Arial, sans-serif", color="#52647f", size=8),
                 )
                 with panel_left:
                     st.markdown(
@@ -2590,12 +2590,12 @@ def run_streamlit():
                     ]
                 )
                 fig_v.update_layout(
-                    height=330,
+                    height=155,
                     showlegend=False,
                     margin=dict(l=0, r=0, t=0, b=0),
                     paper_bgcolor="#ffffff",
                     plot_bgcolor="#ffffff",
-                    annotations=[dict(text=f"Total<br><b>{_fmt_cost(total_cost)}</b>", showarrow=False, x=0.5, y=0.5, font=dict(size=12, color="#172033"))],
+                    annotations=[dict(text=f"Total<br><b>{_fmt_cost(total_cost)}</b>", showarrow=False, x=0.5, y=0.5, font=dict(size=9, color="#172033"))],
                 )
                 legend_rows = []
                 for i, (_, row) in enumerate(prov.iterrows()):
