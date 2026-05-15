@@ -1734,7 +1734,7 @@ def run_streamlit():
               border-bottom:1px solid #e8edf4;
             }
             .finance-section-title {
-              color:#071326;
+              color:#52647f;
               font-size:13px;
               line-height:1.3;
               font-weight:600;
