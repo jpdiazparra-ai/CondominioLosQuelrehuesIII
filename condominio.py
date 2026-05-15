@@ -2809,11 +2809,28 @@ def run_streamlit():
                 """
                 <style>
                 .obl-page-head {
-                  margin:48px 0 14px 0;
+                  margin:0 0 14px 0;
                   display:flex;
                   justify-content:space-between;
-                  align-items:flex-start;
+                  align-items:center;
                   gap:18px;
+                }
+                .obl-title-wrap {
+                  display:flex;
+                  align-items:center;
+                  gap:16px;
+                }
+                .obl-page-icon {
+                  width:44px;
+                  height:44px;
+                  border-radius:50%;
+                  display:grid;
+                  place-items:center;
+                  color:#ffffff;
+                  background:linear-gradient(145deg,#00475b 0%,#0d7280 100%);
+                  box-shadow:0 10px 20px rgba(0,43,65,.16);
+                  font-size:24px;
+                  font-weight:900;
                 }
                 .obl-page-title {
                   color:#071326;
@@ -2827,7 +2844,7 @@ def run_streamlit():
                   color:#667085;
                   font-size:13px;
                   font-weight:800;
-                  margin-top:10px;
+                  margin-top:6px;
                 }
                 .obl-section-head {
                   margin:18px 0 10px 0;
@@ -3046,7 +3063,7 @@ def run_streamlit():
                   align-items:center;
                   gap:22px;
                   color:#172033;
-                  font-size:22px;
+                  font-size:21px;
                   font-weight:900;
                 }
                 @media(max-width:1200px){.obl-page-head{display:block;}.obl-top-tools{justify-content:flex-start;margin-top:14px;}}
@@ -3059,13 +3076,16 @@ def run_streamlit():
             st.markdown(
                 """
                 <div class="obl-page-head">
-                  <div>
-                    <h1 class="obl-page-title">Obligaciones y pagos</h1>
-                    <div class="obl-page-subtitle">Estado de pagos, pendientes y abonos por parcela</div>
+                  <div class="obl-title-wrap">
+                    <div class="obl-page-icon">▤</div>
+                    <div>
+                      <h1 class="obl-page-title">Obligaciones y pagos</h1>
+                      <div class="obl-page-subtitle">Estado de pagos, pendientes y abonos por parcela</div>
+                    </div>
                   </div>
                   <div class="obl-top-tools">
                     <div class="obl-report-pill">⇩ <span>Descargar reporte (PDF)</span></div>
-                    <div class="obl-tool-icons"><span>☆</span><span>✎</span><span>◉</span></div>
+                    <div class="obl-tool-icons"><span>☆</span><span>✎</span><span>⋮</span></div>
                   </div>
                 </div>
                 """,
@@ -3140,24 +3160,28 @@ def run_streamlit():
                     .gc-kpi-grid {
                       display:grid;
                       grid-template-columns:repeat(4,minmax(0,1fr));
-                      gap:16px;
-                      margin:12px 0 20px 0;
+                      gap:28px;
+                      margin:10px 0 18px 0;
                     }
                     .gc-kpi-card {
-                      min-height:94px;
+                      min-height:104px;
                       background:#fff;
                       border:1px solid #e1e8f1;
-                      border-radius:10px;
-                      box-shadow:0 8px 20px rgba(15,23,42,.06);
-                      padding:16px 18px;
+                      border-left:4px solid #8a3ffc;
+                      border-radius:11px;
+                      box-shadow:0 8px 20px rgba(15,23,42,.055);
+                      padding:14px 18px;
                       display:grid;
                       grid-template-columns:52px minmax(0,1fr);
-                      gap:14px;
+                      gap:16px;
                       align-items:center;
                     }
+                    .gc-kpi-card:nth-child(2) { border-left-color:#008a56; }
+                    .gc-kpi-card:nth-child(3) { border-left-color:#e12626; }
+                    .gc-kpi-card:nth-child(4) { border-left-color:#0f6bff; }
                     .gc-kpi-icon {
-                      width:50px;
-                      height:50px;
+                      width:52px;
+                      height:52px;
                       border-radius:12px;
                       display:grid;
                       place-items:center;
@@ -3166,7 +3190,7 @@ def run_streamlit():
                     }
                     .gc-kpi-label {
                       color:#667085;
-                      font-size:12px;
+                      font-size:11px;
                       font-weight:800;
                       line-height:1.2;
                     }
@@ -3175,13 +3199,13 @@ def run_streamlit():
                       font-size:20px;
                       line-height:1.1;
                       font-weight:900;
-                      margin-top:6px;
+                      margin-top:8px;
                     }
                     .gc-kpi-sub {
                       color:#52647f;
-                      font-size:12px;
+                      font-size:11px;
                       font-weight:900;
-                      margin-top:8px;
+                      margin-top:9px;
                     }
                     .gc-kpi-purple { background:#eadcff; color:#8a3ffc; }
                     .gc-kpi-green { background:#dff7e8; color:#008a56; }
@@ -3189,7 +3213,7 @@ def run_streamlit():
                     .gc-kpi-blue { background:#e4efff; color:#0f6bff; }
                     .gc-detail-title {
                       color:#071326;
-                      font-size:20px !important;
+                      font-size:16px !important;
                       line-height:1.18 !important;
                       font-weight:900 !important;
                       margin:0 !important;
@@ -3215,14 +3239,14 @@ def run_streamlit():
                       background:#fff;
                       border:1px solid #e1e8f1;
                       border-radius:10px;
-                      box-shadow:0 10px 24px rgba(15,23,42,.07);
+                      box-shadow:0 8px 20px rgba(15,23,42,.06);
                       overflow:hidden;
                     }
                     .gc-card-head {
                       display:flex;
                       justify-content:space-between;
                       align-items:center;
-                      padding:17px 18px 14px 18px;
+                      padding:13px 16px 11px 16px;
                     }
                     .gc-card-info {
                       color:#7b879d;
@@ -3241,22 +3265,22 @@ def run_streamlit():
                       border-collapse:separate;
                       border-spacing:0;
                       color:#172033;
-                      font-size:11.6px;
+                      font-size:10.4px;
                     }
                     .gc-table th {
-                      height:29px;
+                      height:26px;
                       background:#f7f9fc;
                       color:#263449;
                       text-align:left;
                       font-weight:900;
-                      padding:0 9px;
+                      padding:0 8px;
                       border-bottom:1px solid #e2e8f0;
                       border-right:1px solid #e8edf4;
                       white-space:nowrap;
                     }
                     .gc-table td {
-                      height:25px;
-                      padding:0 9px;
+                      height:21px;
+                      padding:0 8px;
                       border-bottom:1px solid #eef2f7;
                       border-right:1px solid #eef2f7;
                       font-weight:500;
@@ -3273,14 +3297,14 @@ def run_streamlit():
                     .gc-neutral { color:#52647f; }
                     .gc-percent {
                       display:grid;
-                      grid-template-columns:74px minmax(90px,1fr);
+                      grid-template-columns:66px minmax(70px,1fr);
                       align-items:center;
-                      gap:7px;
+                      gap:6px;
                     }
                     .gc-bar {
                       display:block;
                       width:100%;
-                      height:7px;
+                      height:6px;
                       border-radius:999px;
                       background:#eceff3;
                       overflow:hidden;
@@ -3302,7 +3326,7 @@ def run_streamlit():
                       margin-left:7px;
                     }
                     .gc-footer {
-                      min-height:46px;
+                      min-height:41px;
                       padding:0 12px;
                       display:flex;
                       justify-content:space-between;
@@ -3331,7 +3355,7 @@ def run_streamlit():
                       border-color:#0f6bff;
                     }
                     div[data-testid="stVerticalBlockBorderWrapper"]:has(.gc-pie-head) {
-                      min-height:578px;
+                      min-height:472px;
                     }
                     .gc-pie-head {
                       display:flex;
@@ -3341,7 +3365,7 @@ def run_streamlit():
                     }
                     .gc-pie-title {
                       color:#071326;
-                      font-size:15px;
+                      font-size:16px;
                       font-weight:900;
                     }
                     .gc-pie-actions {
@@ -3349,8 +3373,8 @@ def run_streamlit():
                       gap:6px;
                     }
                     .gc-pie-action {
-                      width:26px;
-                      height:26px;
+                      width:24px;
+                      height:24px;
                       border:1px solid #dfe7f1;
                       border-radius:7px;
                       display:grid;
@@ -3366,8 +3390,8 @@ def run_streamlit():
                       align-items:center;
                       border:1px solid #e1e8f1;
                       border-radius:9px;
-                      padding:11px;
-                      margin-top:5px;
+                      padding:10px;
+                      margin-top:4px;
                       background:#fff;
                     }
                     .top-debtor-icon {
@@ -3404,7 +3428,7 @@ def run_streamlit():
                       color:#0f6bff;
                       font-weight:900;
                       font-size:11px;
-                      margin-top:14px;
+                      margin-top:10px;
                     }
                     @media(max-width:1200px){.gc-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.gc-card{overflow-x:auto;}}
                     @media(max-width:780px){.gc-kpi-grid{grid-template-columns:1fr;}.gc-search{min-width:100%;}}
@@ -3553,11 +3577,12 @@ def run_streamlit():
 
                 table_html = (
                     "<div class=\"gc-card\">"
-                    "<div class=\"gc-card-head\"><h2 class=\"gc-detail-title\">Estado de pendientes por parcela <span class=\"gc-card-info\">i</span></h2></div>"
+                    "<div class=\"gc-card-head\"><h2 class=\"gc-detail-title\">Estado de pendientes por parcela <span class=\"gc-card-info\">i</span> <span style=\"color:#7b879d;font-size:12px;margin-left:7px;\">↔</span></h2></div>"
                     "<table class=\"gc-table\">"
                     "<thead><tr><th>Parcela</th><th>Propietario</th><th class=\"gc-num\">Estado saldo (CLP)</th><th>Estado %</th><th>Último pago</th></tr></thead>"
                     f"<tbody>{''.join(table_rows)}</tbody>"
                     "</table>"
+                    f"<div class=\"gc-footer\"><span>Mostrando 1 a {len(tabla_prop_page):,} de {len(tabla_prop_page):,} parcelas</span><span class=\"gc-page-controls\"><span class=\"gc-page\">‹ Anterior</span><span class=\"gc-page active\">1</span><span class=\"gc-page\">Siguiente ›</span></span></div>"
                     "</div>"
                 )
 
@@ -3590,10 +3615,10 @@ def run_streamlit():
                             ]
                         )
                         fig_pie.update_layout(
-                            height=300,
+                            height=270,
                             showlegend=True,
-                            legend=dict(title="Parcela", orientation="v", x=1.02, y=0.86, font=dict(size=9)),
-                            margin=dict(l=0, r=52, t=4, b=0),
+                            legend=dict(title="Parcela", orientation="v", x=1.0, y=0.88, font=dict(size=9)),
+                            margin=dict(l=0, r=42, t=0, b=0),
                             paper_bgcolor="#ffffff",
                             plot_bgcolor="#ffffff",
                             annotations=[
