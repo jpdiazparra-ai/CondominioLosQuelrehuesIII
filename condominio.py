@@ -668,18 +668,18 @@ def run_streamlit():
           z-index: 20;
         }
         [data-testid="stSidebar"] .stButton > button {
-          width: 102px;
-          min-height: 72px;
+          width: 72px;
+          min-height: 50px;
           border: 1px solid #dfe7f1;
-          border-radius: 12px;
+          border-radius: 8px;
           background: #ffffff;
           color: #526174;
           box-shadow: 0 8px 20px rgba(15,23,42,.06);
-          font-size: 13px;
+          font-size: 9px;
           font-weight: 800;
           line-height: 1.2;
           white-space: pre-line;
-          padding: 8px 10px;
+          padding: 6px 7px;
         }
         [data-testid="stSidebar"] .stButton > button:hover {
           border-color: #b9c7da;
