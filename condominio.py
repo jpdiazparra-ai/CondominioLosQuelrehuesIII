@@ -667,21 +667,25 @@ def run_streamlit():
           justify-content: center;
           z-index: 20;
         }
-        [data-testid="stSidebar"] .stButton > button {
-          width: 72px;
-          min-height: 50px;
-          border: 1px solid #dfe7f1;
-          border-radius: 8px;
-          background: #ffffff;
-          color: #526174;
-          box-shadow: 0 8px 20px rgba(15,23,42,.06);
-          font-size: 9px;
-          font-weight: 800;
-          line-height: 1.2;
-          white-space: pre-line;
-          padding: 6px 7px;
+        [data-testid="stSidebar"] .stButton > div,
+        [data-testid="stSidebar"] .stButton button {
+          width: 72px !important;
+          max-width: 72px !important;
         }
-        [data-testid="stSidebar"] .stButton > button:hover {
+        [data-testid="stSidebar"] .stButton button {
+          min-height: 50px !important;
+          border: 1px solid #dfe7f1 !important;
+          border-radius: 8px !important;
+          background: #ffffff !important;
+          color: #526174 !important;
+          box-shadow: 0 8px 20px rgba(15,23,42,.06) !important;
+          font-size: 9px !important;
+          font-weight: 800 !important;
+          line-height: 1.2 !important;
+          white-space: pre-line !important;
+          padding: 6px 7px !important;
+        }
+        [data-testid="stSidebar"] .stButton button:hover {
           border-color: #b9c7da;
           color: #0f6bff;
           background: #f8fbff;
