@@ -544,15 +544,15 @@ def run_streamlit():
         }
         color = color_map.get(tone, "#0f6bff")
         spark = _sparkline_svg(color, spark_points) if spark_points else ""
-        return f"""
-        <div class="dash-kpi-card dash-{tone}">
-          <div class="dash-icon">{icon}</div>
-          <div class="dash-kpi-title">{html.escape(title)}</div>
-          <div class="dash-kpi-value">{html.escape(value)}</div>
-          <div class="dash-kpi-sub">{html.escape(subtitle)}</div>
-          {spark}
-        </div>
-        """
+        return (
+            f'<div class="dash-kpi-card dash-{tone}">'
+            f'<div class="dash-icon">{icon}</div>'
+            f'<div class="dash-kpi-title">{html.escape(title)}</div>'
+            f'<div class="dash-kpi-value">{html.escape(value)}</div>'
+            f'<div class="dash-kpi-sub">{html.escape(subtitle)}</div>'
+            f"{spark}"
+            "</div>"
+        )
 
     st.markdown(
         """
@@ -1735,9 +1735,9 @@ def run_streamlit():
             }
             .finance-section-title {
               color:#071326;
-              font-size:20px;
-              line-height:1.2;
-              font-weight:900;
+              font-size:13px;
+              line-height:1.3;
+              font-weight:600;
               margin:0 !important;
               padding:0 !important;
             }
