@@ -576,10 +576,10 @@ def run_streamlit():
           color: var(--dash-ink);
         }
         .block-container {
-          padding-top: 0.25rem;
-          padding-left: 2.75rem;
-          padding-right: 2.75rem;
-          max-width: 1680px;
+          padding-top: 1.15rem;
+          padding-left: 2.25rem;
+          padding-right: 2.25rem;
+          max-width: 1540px;
         }
         [data-testid="stSidebar"] {
           background: rgba(255, 255, 255, 0.93);
@@ -600,7 +600,7 @@ def run_streamlit():
         .side-logo {
           width: 58px;
           height: 58px;
-          margin: 0 auto 30px auto;
+          margin: 0 auto 28px auto;
           border-radius: 10px;
           display: grid;
           place-items: center;
@@ -611,7 +611,7 @@ def run_streamlit():
         }
         [data-testid="stSidebar"] [role="radiogroup"] {
           display: grid;
-          gap: 13px;
+          gap: 14px;
         }
         [data-testid="stSidebar"] [data-testid="stRadio"] > label {
           display: none;
@@ -658,44 +658,52 @@ def run_streamlit():
           font-size: 13px;
           font-weight: 500;
         }
-        [data-testid="stSidebar"] .stButton {
-          position: fixed;
-          bottom: 2rem;
-          left: 0;
-          width: 138px;
-          display: flex;
-          justify-content: center;
-          z-index: 20;
-        }
-        [data-testid="stSidebar"] .stButton > div,
-        [data-testid="stSidebar"] .stButton button {
-          width: 72px !important;
-          max-width: 72px !important;
-        }
-        [data-testid="stSidebar"] .stButton button {
-          min-height: 50px !important;
-          border: 1px solid #dfe7f1 !important;
-          border-radius: 8px !important;
-          background: #ffffff !important;
-          color: #526174 !important;
-          box-shadow: 0 8px 20px rgba(15,23,42,.06) !important;
-          font-size: 9px !important;
-          font-weight: 800 !important;
-          line-height: 1.2 !important;
-          white-space: pre-line !important;
-          padding: 6px 7px !important;
-        }
-        [data-testid="stSidebar"] .stButton button:hover {
-          border-color: #b9c7da;
-          color: #0f6bff;
-          background: #f8fbff;
-        }
         .top-shell {
           display: flex;
           justify-content: space-between;
           align-items: flex-start;
           gap: 24px;
           margin-bottom: 8px;
+        }
+        .general-page-head {
+          display:flex;
+          justify-content:space-between;
+          align-items:flex-start;
+          gap:22px;
+          margin:0 0 22px 0;
+        }
+        .general-title {
+          color:#071326;
+          font-size:24px;
+          line-height:1.05;
+          font-weight:900;
+          margin:0 !important;
+          padding:0 !important;
+        }
+        .general-subtitle {
+          color:#52647f;
+          font-size:13px;
+          line-height:1.3;
+          font-weight:600;
+          margin-top:8px;
+        }
+        .general-actions {
+          display:flex;
+          align-items:center;
+          justify-content:flex-end;
+          gap:24px;
+          color:#071326;
+          font-size:24px;
+          line-height:1;
+          white-space:nowrap;
+        }
+        .general-icons {
+          display:flex;
+          align-items:center;
+          gap:24px;
+          font-size:24px;
+          font-weight:900;
+          color:#071326;
         }
         .app-title {
           margin: 0;
@@ -731,15 +739,31 @@ def run_streamlit():
           background: #fbfdff;
           color: #0f172a;
         }
+        .block-container div.stButton > button {
+          min-height: 44px;
+          border-radius: 8px;
+          border: 1px solid #d8e0eb;
+          background: #ffffff;
+          color: #101828;
+          box-shadow: 0 6px 14px rgba(15,23,42,0.08);
+          font-size: 13px;
+          font-weight: 900;
+          padding: 0 1.35rem;
+        }
+        .block-container div.stButton > button:hover {
+          border-color:#c5cfdd;
+          background:#fbfdff;
+          color:#0f172a;
+        }
         .dash-hero {
-          min-height: 270px;
+          min-height: 158px;
           display: grid;
-          grid-template-columns: minmax(0, 1fr) 300px;
-          gap: 24px;
+          grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1fr) 280px;
+          gap: 34px;
           align-items: center;
-          margin: 18px 0 20px 0;
-          padding: 26px 34px;
-          border-radius: 17px;
+          margin: 0 0 20px 0;
+          padding: 28px 38px;
+          border-radius: 12px;
           position: relative;
           overflow: hidden;
           color: #ffffff;
@@ -747,7 +771,7 @@ def run_streamlit():
             radial-gradient(circle at 89% 18%, rgba(122, 231, 230, 0.16), transparent 18%),
             radial-gradient(circle at 84% 76%, rgba(122, 231, 230, 0.14), transparent 28%),
             linear-gradient(130deg, #002b41 0%, #003a50 45%, #00465a 100%);
-          box-shadow: 0 18px 28px rgba(15, 23, 42, 0.22);
+          box-shadow: 0 13px 24px rgba(15, 23, 42, 0.18);
         }
         .dash-hero::before {
           content: "";
@@ -761,7 +785,7 @@ def run_streamlit():
         .dash-hero-label {
           position: relative;
           z-index: 1;
-          font-size: 0.82rem;
+          font-size: 0.76rem;
           letter-spacing: 0.1em;
           font-weight: 900;
           text-transform: uppercase;
@@ -769,8 +793,8 @@ def run_streamlit():
         .dash-hero-value {
           position: relative;
           z-index: 1;
-          margin-top: 14px;
-          font-size: clamp(2.45rem, 4vw, 3.4rem);
+          margin-top: 10px;
+          font-size: clamp(2.2rem, 3.15vw, 3rem);
           line-height: 0.98;
           font-weight: 900;
           text-shadow: 0 3px 0 rgba(255, 255, 255, 0.12), 0 7px 18px rgba(0, 0, 0, 0.25);
@@ -779,104 +803,109 @@ def run_streamlit():
         .dash-hero-sub {
           position: relative;
           z-index: 1;
-          margin-top: 12px;
+          margin-top: 10px;
           color: #edf7fb;
           font-size: 0.9rem;
           font-weight: 700;
         }
         .dash-hero-rule {
+          display:none;
+        }
+        .dash-hero-divider {
           position: relative;
           z-index: 1;
-          width: 68%;
-          height: 1px;
-          background: rgba(223, 244, 248, 0.25);
-          margin: 20px 0 16px 0;
+          width:1px;
+          height:86px;
+          background: rgba(223, 244, 248, 0.45);
+          justify-self:center;
+          margin:0;
         }
         .dash-hero-secondary-value {
           position: relative;
           z-index: 1;
-          margin-top: 9px;
-          font-size: 1.85rem;
+          margin-top: 10px;
+          color:#6ee0a4;
+          font-size: clamp(2rem, 2.8vw, 2.75rem);
           font-weight: 900;
           line-height: 1;
         }
         .bank-art {
           position: relative;
           z-index: 1;
-          height: 182px;
+          height: 124px;
           display: grid;
           place-items: end center;
           opacity: 0.88;
         }
         .bank-art .bank {
           position: relative;
-          width: 175px;
-          height: 119px;
+          width: 148px;
+          height: 101px;
         }
         .bank-roof {
           position: absolute;
-          left: 13px;
+          left: 11px;
           top: 3px;
-          width: 150px;
-          height: 38px;
+          width: 126px;
+          height: 32px;
           background: #86dce1;
           clip-path: polygon(50% 0%, 100% 72%, 95% 100%, 5% 100%, 0% 72%);
           box-shadow: inset 0 -6px 0 rgba(14, 84, 98, 0.18);
         }
         .bank-row {
           position: absolute;
-          left: 20px;
-          top: 48px;
-          width: 136px;
+          left: 17px;
+          top: 41px;
+          width: 115px;
           display: grid;
           grid-template-columns: repeat(4, 1fr);
-          gap: 14px;
+          gap: 12px;
         }
         .bank-col {
-          height: 64px;
+          height: 54px;
           border-radius: 8px 8px 2px 2px;
           background: linear-gradient(180deg, #9be8e9, #5dc5cb);
           box-shadow: inset 7px 0 0 rgba(255,255,255,0.18);
         }
         .bank-base {
           position: absolute;
-          left: 6px;
+          left: 5px;
           bottom: 0;
-          width: 164px;
-          height: 15px;
+          width: 139px;
+          height: 13px;
           border-radius: 3px;
           background: #a8edf0;
           box-shadow: 0 -9px 0 #73d4d8;
         }
         .bank-coin {
           position: absolute;
-          left: 59px;
-          top: 81px;
-          width: 52px;
-          height: 52px;
+          left: 50px;
+          top: 68px;
+          width: 44px;
+          height: 44px;
           border-radius: 50%;
           display: grid;
           place-items: center;
           background: #ecffff;
           color: #0c6671;
-          font-size: 29px;
+          font-size: 24px;
           font-weight: 900;
           box-shadow: 0 0 0 6px rgba(129, 218, 224, 0.74);
         }
         .dash-kpi-grid {
           display: grid;
           grid-template-columns: repeat(6, minmax(0, 1fr));
-          gap: 18px;
-          margin: 0 0 20px 0;
+          gap: 12px;
+          margin: 0 0 26px 0;
         }
         .dash-kpi-card {
-          min-height: 166px;
+          min-height: 150px;
           background: #ffffff;
           border: 1px solid #e2eaf4;
           border-top: 4px solid var(--tone);
-          border-radius: 14px;
-          padding: 14px 16px 10px 16px;
-          box-shadow: 0 11px 22px rgba(15,23,42,0.10);
+          border-radius: 12px;
+          padding: 15px 14px 10px 14px;
+          box-shadow: 0 9px 20px rgba(15,23,42,0.08);
           overflow: hidden;
         }
         .dash-green { --tone: #00a86b; }
@@ -885,8 +914,8 @@ def run_streamlit():
         .dash-teal { --tone: #008b78; }
         .dash-blue { --tone: #0f6bff; }
         .dash-icon {
-          height: 42px;
-          width: 42px;
+          height: 46px;
+          width: 46px;
           border-radius: 50%;
           display: grid;
           place-items: center;
@@ -894,33 +923,33 @@ def run_streamlit():
           background: color-mix(in srgb, var(--tone) 15%, white);
           font-size: 20px;
           font-weight: 900;
-          margin-bottom: 9px;
+          margin-bottom: 12px;
         }
         .dash-kpi-title {
           color: #3d485c;
-          font-size: 0.7rem;
+          font-size: 0.58rem;
           font-weight: 900;
           text-transform: uppercase;
           line-height: 1.25;
         }
         .dash-kpi-value {
-          margin-top: 6px;
+          margin-top: 8px;
           color: #071326;
-          font-size: clamp(1.25rem, 1.55vw, 1.52rem);
+          font-size: clamp(1.18rem, 1.45vw, 1.42rem);
           line-height: 1.05;
           font-weight: 900;
         }
         .dash-kpi-sub {
-          margin-top: 8px;
+          margin-top: 10px;
           color: var(--tone);
-          font-size: 0.72rem;
+          font-size: 0.64rem;
           font-weight: 700;
           min-height: 16px;
         }
         .dash-sparkline {
           width: 100%;
-          height: 26px;
-          margin-top: 8px;
+          height: 28px;
+          margin-top: 12px;
         }
         @media (max-width: 1300px) {
           .dash-kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -961,14 +990,15 @@ def run_streamlit():
             label_visibility="collapsed",
             key="selected_section",
         )
-        if st.button("↻\nActualizar datos", key="refresh_data", help="Recargar datos sin cambiar de pestaña"):
-            st.cache_data.clear()
-            st.session_state.pop("report_pdf_bytes", None)
-            st.session_state["refresh_done"] = True
-            st.rerun()
-
-    if st.session_state.pop("refresh_done", False):
-        st.toast("Datos actualizados")
+        st.markdown(
+            """
+            <div class="side-about">
+              <div style="font-size:22px;line-height:1;">ⓘ</div>
+              <div>Acerca de</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
     @st.cache_data(show_spinner=False)
     def _load(url_value: str, cache_version: int, expected_cols: Optional[set[str]] = None) -> pd.DataFrame:
@@ -1326,11 +1356,21 @@ def run_streamlit():
         return report_pdf
 
     if selected_section == "General":
-        col_title, col_btn = st.columns([0.78, 0.22])
+        col_title, col_btn, col_icons = st.columns([0.64, 0.20, 0.16], gap="medium")
         with col_title:
-            st.empty()
+            st.markdown(
+                """
+                <div class="general-page-head">
+                  <div>
+                    <h1 class="general-title">General</h1>
+                    <div class="general-subtitle">Análisis de ingresos, costos y resultado neto del condominio.</div>
+                  </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
         with col_btn:
-            if st.button("Preparar reporte PDF", key="prepare_report_pdf"):
+            if st.button("⇩  Descargar reporte (PDF)", key="prepare_report_pdf"):
                 try:
                     st.session_state["report_pdf_bytes"] = _make_obligaciones_report()
                     st.toast("Reporte listo para descargar")
@@ -1346,6 +1386,11 @@ def run_streamlit():
                     file_name="reporte_obligaciones.pdf",
                     mime="application/pdf",
                 )
+        with col_icons:
+            st.markdown(
+                '<div class="general-icons"><span>☆</span><span>✎</span><span>◉</span><span>⋮</span></div>',
+                unsafe_allow_html=True,
+            )
 
     if selected_section == "General":
         with st.spinner("Cargando datos generales..."):
@@ -1545,7 +1590,9 @@ def run_streamlit():
                 <div class="dash-hero-eyebrow">NETO ACUMULADO - BANCO</div>
                 <div class="dash-hero-value">${total_neto:,.0f}</div>
                 <div class="dash-hero-note">↗&nbsp;&nbsp;Resultado histórico acumulado: ingresos menos costos</div>
-                <div class="dash-hero-rule"></div>
+              </div>
+              <div class="dash-hero-divider"></div>
+              <div>
                 <div class="dash-hero-label">BANCO FUTURO SIN CUENTAS POR PAGAR</div>
                 <div class="dash-hero-secondary-value">${banco_futuro:,.0f}</div>
                 <div class="dash-hero-sub">⚖&nbsp;&nbsp;Neto acumulado menos pendiente a proveedores</div>
@@ -1695,8 +1742,51 @@ def run_streamlit():
               font-size:22px;
               line-height:1.2;
               font-weight:900;
-              margin:18px 0 10px 0 !important;
+              margin:0 !important;
               padding:0 !important;
+            }
+            .finance-section-row {
+              display:flex;
+              align-items:center;
+              justify-content:space-between;
+              gap:16px;
+              margin:0 0 10px 0;
+            }
+            .finance-section-actions {
+              display:flex;
+              align-items:center;
+              gap:12px;
+            }
+            .finance-filter-pill {
+              min-width:128px;
+              height:34px;
+              border:1px solid #dfe7f1;
+              border-radius:7px;
+              background:#fff;
+              display:flex;
+              align-items:center;
+              justify-content:space-between;
+              gap:12px;
+              padding:0 14px;
+              color:#172033;
+              font-size:13px;
+              font-weight:800;
+              box-shadow:0 3px 10px rgba(15,23,42,.04);
+            }
+            .finance-filter-btn {
+              height:34px;
+              border:1px solid #dfe7f1;
+              border-radius:7px;
+              background:#fff;
+              display:flex;
+              align-items:center;
+              justify-content:center;
+              gap:8px;
+              padding:0 14px;
+              color:#172033;
+              font-size:13px;
+              font-weight:800;
+              box-shadow:0 3px 10px rgba(15,23,42,.04);
             }
             @media (max-width: 1100px) {
               .summary-grid,
@@ -1707,7 +1797,16 @@ def run_streamlit():
             unsafe_allow_html=True,
         )
         st.markdown(
-            '<h2 class="finance-section-title">Resumen económico del condominio</h2>',
+            """
+            <div class="finance-section-row">
+              <h2 class="finance-section-title">Resumen económico del condominio</h2>
+              <div class="finance-section-actions">
+                <div class="finance-filter-pill"><span>2021 - 2026</span><span>⌄</span></div>
+                <div class="finance-filter-btn"><span>≡</span><span>Filtros</span></div>
+                <div class="finance-tool">⋮</div>
+              </div>
+            </div>
+            """,
             unsafe_allow_html=True,
         )
 
