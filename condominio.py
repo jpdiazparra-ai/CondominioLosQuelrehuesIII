@@ -3654,10 +3654,11 @@ def run_streamlit():
                 .dist-title {
                   color:#071326;
                   font-family:Inter, Arial, sans-serif;
-                  font-size:15px;
-                  line-height:normal;
+                  font-size:18px !important;
+                  line-height:1.2;
                   font-weight:900;
-                  margin:0;
+                  margin:0 !important;
+                  padding:0 !important;
                 }
                 .dist-actions {
                   display:flex;
