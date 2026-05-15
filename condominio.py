@@ -3652,9 +3652,10 @@ def run_streamlit():
                   margin-bottom:5px;
                 }
                 .dist-title {
-                  color:#172033;
-                  font-size:14px;
-                  line-height:1.2;
+                  color:#071326;
+                  font-family:Inter, Arial, sans-serif;
+                  font-size:15px;
+                  line-height:normal;
                   font-weight:900;
                   margin:0;
                 }
