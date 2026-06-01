@@ -576,7 +576,7 @@ def run_streamlit():
           color: var(--dash-ink);
         }
         .block-container {
-          padding-top: 0.25rem;
+          padding-top: 3.25rem;
           padding-left: 2rem;
           padding-right: 2rem;
           max-width: 1540px;
@@ -585,8 +585,8 @@ def run_streamlit():
           background: rgba(255, 255, 255, 0.93);
           border-right: 1px solid #e6edf5;
           box-shadow: 10px 0 28px rgba(15, 23, 42, 0.04);
-          min-width: 138px !important;
-          max-width: 138px !important;
+          min-width: 176px !important;
+          max-width: 176px !important;
         }
         [data-testid="stSidebar"] > div:first-child {
           padding: 1.7rem 1rem 1rem 1rem;
@@ -612,6 +612,23 @@ def run_streamlit():
         [data-testid="stSidebar"] [role="radiogroup"] {
           display: grid;
           gap: 14px;
+        }
+        [data-testid="stSidebar"] .stButton {
+          margin-top: 14px;
+        }
+        [data-testid="stSidebar"] .stButton > button {
+          width: 100%;
+          min-height: 42px;
+          border-radius: 8px;
+          border: 1px solid #cfd9e6;
+          background: #ffffff;
+          color: #071326;
+          box-shadow: 0 6px 14px rgba(15,23,42,0.08);
+          font-size: 12px;
+          font-weight: 900;
+          line-height: 1.2;
+          white-space: normal;
+          padding: 0.45rem 0.65rem;
         }
         [data-testid="stSidebar"] [data-testid="stRadio"] > label {
           display: none;
@@ -644,13 +661,15 @@ def run_streamlit():
         [data-testid="stSidebar"] [role="radiogroup"] p {
           font-size: 13px;
           font-weight: 700;
+          line-height: 1.2;
           margin: 0;
+          white-space: pre-line;
         }
         .side-about {
           position: fixed;
           bottom: 2rem;
           left: 0;
-          width: 138px;
+          width: 176px;
           display: grid;
           place-items: center;
           gap: 6px;
@@ -670,15 +689,16 @@ def run_streamlit():
           justify-content:space-between;
           align-items:center;
           gap:22px;
-          margin:0 0 10px 0;
+          margin:0 0 12px 0;
         }
         .general-title {
           color:#071326;
           font-size:20px;
-          line-height:1.05;
+          line-height:1.2;
           font-weight:900;
           margin:0 !important;
           padding:0 !important;
+          overflow-wrap:anywhere;
         }
         .general-subtitle {
           color:#52647f;
@@ -724,9 +744,10 @@ def run_streamlit():
           margin: 0;
           color: var(--dash-ink);
           font-size: clamp(1.85rem, 3vw, 2.65rem);
-          line-height: 1;
+          line-height: 1.12;
           letter-spacing: 0;
           font-weight: 900;
+          overflow-wrap: anywhere;
         }
         .top-actions {
           display: flex;
@@ -740,6 +761,7 @@ def run_streamlit():
           min-width: 230px;
         }
         div.stDownloadButton > button {
+          width: 100%;
           min-height: 48px;
           border-radius: 8px;
           border: 1px solid #d8e0eb;
@@ -747,7 +769,9 @@ def run_streamlit():
           color: #101828;
           box-shadow: 0 8px 18px rgba(15,23,42,0.12);
           font-weight: 800;
-          padding: 0 1.55rem;
+          line-height: 1.2;
+          padding: 0.55rem 1.55rem;
+          white-space: normal;
         }
         div.stDownloadButton > button:hover {
           border-color: #c5cfdd;
@@ -971,8 +995,9 @@ def run_streamlit():
           .dash-hero { grid-template-columns: 1fr 210px; }
         }
         @media (max-width: 780px) {
-          .block-container { padding-left: 1.1rem; padding-right: 1.1rem; }
-          [data-testid="stSidebar"] { min-width: 112px !important; max-width: 112px !important; }
+          .block-container { padding-top: 2.4rem; padding-left: 1.1rem; padding-right: 1.1rem; }
+          [data-testid="stSidebar"] { min-width: 138px !important; max-width: 138px !important; }
+          .side-about { width: 138px; }
           .top-shell { display: block; }
           .top-actions { justify-content: flex-start; margin-top: 20px; }
           .dash-hero { grid-template-columns: 1fr; padding: 20px 22px; }
@@ -983,6 +1008,9 @@ def run_streamlit():
         """,
         unsafe_allow_html=True,
     )
+
+    if "data_cache_version" not in st.session_state:
+        st.session_state["data_cache_version"] = CACHE_VERSION
 
     with st.sidebar:
         st.markdown(
@@ -1005,6 +1033,10 @@ def run_streamlit():
             label_visibility="collapsed",
             key="selected_section",
         )
+        if st.button("Actualizar data del URL", key="refresh_url_data"):
+            st.session_state["data_cache_version"] += 1
+            st.cache_data.clear()
+            st.rerun()
         st.markdown(
             """
             <div class="side-about">
@@ -1027,13 +1059,15 @@ def run_streamlit():
     def _load_mantencion(url_value: str, cache_version: int) -> pd.DataFrame:
         return load_mantencion_table(url_value)
 
+    data_cache_version = st.session_state["data_cache_version"]
+
     @st.cache_data(show_spinner=False)
-    def _make_obligaciones_report() -> bytes:
-        df_obl = _load(OBLIGACIONES_CSV_URL, CACHE_VERSION, {"ano", "anio", "año", "parcela", "gc"})
-        df_ing_o = _load(INGRESOS_CSV_URL, CACHE_VERSION, {"fecha", "parcela", "abono"})
-        df_prop = _load(PROPIETARIOS_CSV_URL, CACHE_VERSION, {"parcela", "propietario"})
-        df_td = _load_td23(TD23_CSV_URL, CACHE_VERSION)
-        df_mant = _load_mantencion(MANTENCION_CSV_URL, CACHE_VERSION)
+    def _make_obligaciones_report(cache_version: int) -> bytes:
+        df_obl = _load(OBLIGACIONES_CSV_URL, cache_version, {"ano", "anio", "año", "parcela", "gc"})
+        df_ing_o = _load(INGRESOS_CSV_URL, cache_version, {"fecha", "parcela", "abono"})
+        df_prop = _load(PROPIETARIOS_CSV_URL, cache_version, {"parcela", "propietario"})
+        df_td = _load_td23(TD23_CSV_URL, cache_version)
+        df_mant = _load_mantencion(MANTENCION_CSV_URL, cache_version)
 
         cols_ing_o = list(df_ing_o.columns)
         cand_concepto = ["detalle", "concepto", "glosa", "descripcion", "tipo", "categoria", "cc", "ccc", "medio"]
@@ -1198,7 +1232,7 @@ def run_streamlit():
         fig_cost_cat = None
         fig_cost_prov = None
 
-        df_cost_r = _load(COSTOS_CSV_URL, CACHE_VERSION, {"monto", "proveedor", "cc"})
+        df_cost_r = _load(COSTOS_CSV_URL, data_cache_version, {"monto", "proveedor", "cc"})
         s_ing = build_series_mensual_ingresos(df_ing_o)
         s_cost = build_series_mensual_costos(df_cost_r)
         df_m = (
@@ -1371,26 +1405,9 @@ def run_streamlit():
         return report_pdf
 
     if selected_section == "General":
-        st.markdown(
-            """
-            <div class="general-page-head">
-              <div>
-                <h1 class="general-title">General</h1>
-                <div class="general-subtitle">Análisis de ingresos, costos y resultado neto del condominio.</div>
-              </div>
-              <div class="general-actions">
-                <div class="general-report-btn"><span>⇩</span><span>Descargar reporte (PDF)</span></div>
-                <div class="general-icons"><span>☆</span><span>✎</span><span>◉</span><span>⋮</span></div>
-              </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-    if selected_section == "General":
         with st.spinner("Cargando datos generales..."):
-            df_ing_g = _load(INGRESOS_CSV_URL, CACHE_VERSION, {"fecha", "parcela", "abono"})
-            df_cost_g = _load(COSTOS_CSV_URL, CACHE_VERSION, {"monto", "proveedor", "cc"})
+            df_ing_g = _load(INGRESOS_CSV_URL, data_cache_version, {"fecha", "parcela", "abono"})
+            df_cost_g = _load(COSTOS_CSV_URL, data_cache_version, {"monto", "proveedor", "cc"})
 
         serie_ing = build_series_mensual_ingresos(df_ing_g)
         serie_cost = build_series_mensual_costos(df_cost_g)
@@ -1418,7 +1435,7 @@ def run_streamlit():
         try:
             df_por_pagar = _load(
                 POR_PAGAR_CSV_URL,
-                CACHE_VERSION,
+                data_cache_version,
                 {"motivo", "presupuesto", "abono", "pendiente_a_proveedor"},
             )
             col_pend_prov = _pick_col(list(df_por_pagar.columns), ["pendiente_a_proveedor", "pendiente_proveedores"])
@@ -1431,8 +1448,8 @@ def run_streamlit():
         # KPI de pendientes (desde Obligaciones)
         oblig_anual_g = pd.DataFrame(columns=["anio", "gc_total"])
         try:
-            df_obl_g = _load(OBLIGACIONES_CSV_URL, CACHE_VERSION, {"ano", "anio", "año", "parcela", "gc"})
-            df_ing_g2 = _load(INGRESOS_CSV_URL, CACHE_VERSION, {"fecha", "parcela", "abono"})
+            df_obl_g = _load(OBLIGACIONES_CSV_URL, data_cache_version, {"ano", "anio", "año", "parcela", "gc"})
+            df_ing_g2 = _load(INGRESOS_CSV_URL, data_cache_version, {"fecha", "parcela", "abono"})
             cols_ing_o = list(df_ing_g2.columns)
             cand_concepto = ["detalle", "concepto", "glosa", "descripcion", "tipo", "categoria", "cc", "ccc", "medio"]
             concepto_col_val = next((c for c in cand_concepto if c in cols_ing_o), None)
@@ -1465,7 +1482,7 @@ def run_streamlit():
                     ing_all = ing_all.dropna(subset=["parcela", "monto_norm"])
 
                     # Pendiente mantención
-                    df_mant_g = _load_mantencion(MANTENCION_CSV_URL, CACHE_VERSION)
+                    df_mant_g = _load_mantencion(MANTENCION_CSV_URL, data_cache_version)
                     if not df_mant_g.empty and col_cc_ing:
                         mant = df_mant_g.groupby("parcela", as_index=False)["mantencion"].sum()
                         cc_text = (
@@ -1490,7 +1507,7 @@ def run_streamlit():
                         pendiente_mant = float((mant["mantencion"] - mant["pagado_mant"]).clip(lower=0).sum())
 
                     # Pendiente proyecto por CC desde TD 2.3
-                    df_td_g = _load_td23(TD23_CSV_URL, CACHE_VERSION)
+                    df_td_g = _load_td23(TD23_CSV_URL, data_cache_version)
                     if not df_td_g.empty and col_cc_ing:
                         ing_cc = ing_all.copy()
                         ing_cc["cc_norm"] = ing_cc[col_cc_ing].astype(str).str.lower()
@@ -1525,6 +1542,45 @@ def run_streamlit():
             pendiente_mant = 0.0
             pendiente_proy = 0.0
             pct_no_pago = 0.0
+
+        general_report_df = pd.DataFrame(
+            [
+                ["Total ingresos", f"${total_ing:,.0f}"],
+                ["Total costos", f"${total_cost:,.0f}"],
+                ["Neto acumulado", f"${total_neto:,.0f}"],
+                ["Banco estimado futuro", f"${banco_futuro:,.0f}"],
+                ["Pendiente total", f"${pendiente_total:,.0f}"],
+                ["Pendiente GC", f"${pendiente_gc:,.0f}"],
+                ["Pendiente mantención", f"${pendiente_mant:,.0f}"],
+                ["Pendiente proyecto", f"${pendiente_proy:,.0f}"],
+                ["Mejor año", str(best_year)],
+            ],
+            columns=["Indicador", "Valor"],
+        )
+        general_head_left, general_head_right = st.columns([1, 0.28], gap="large")
+        with general_head_left:
+            st.markdown(
+                """
+                <div class="general-page-head">
+                  <div>
+                    <h1 class="general-title">General</h1>
+                    <div class="general-subtitle">Análisis de ingresos, costos y resultado neto del condominio.</div>
+                  </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+        with general_head_right:
+            try:
+                st.download_button(
+                    "Descargar reporte (PDF)",
+                    data=_df_to_pdf_bytes(general_report_df, "Reporte general"),
+                    file_name="reporte_general_condominio.pdf",
+                    mime="application/pdf",
+                    key="download_general_pdf",
+                )
+            except RuntimeError as e:
+                st.error(str(e))
 
         kpi_tiles = "".join(
             [
@@ -1820,6 +1876,15 @@ def run_streamlit():
             def _money(v: float) -> str:
                 return f"${v:,.0f}"
 
+            def _money_compact(v: float) -> str:
+                abs_v = abs(float(v or 0))
+                sign = "-" if float(v or 0) < 0 else ""
+                if abs_v >= 1_000_000:
+                    return f"{sign}${abs_v / 1_000_000:.1f}M"
+                if abs_v >= 1_000:
+                    return f"{sign}${abs_v / 1_000:.0f}K"
+                return f"{sign}${abs_v:,.0f}"
+
             def _axis_ticks(values) -> tuple[list[float], list[str]]:
                 vals = pd.Series(values).pipe(pd.to_numeric, errors="coerce").fillna(0)
                 max_v = max(float(vals.max()), 0.0)
@@ -1981,12 +2046,12 @@ def run_streamlit():
                     go.Pie(
                         labels=pie_df["anio_int"].astype(str),
                         values=pie_df["ingresos"],
-                        hole=0.42,
+                        hole=0.56,
                         sort=False,
                         marker=dict(colors=pie_colors, line=dict(color="rgba(255,255,255,.22)", width=1)),
                         texttemplate="%{label}<br>%{percent}",
                         textposition="inside",
-                        textfont=dict(color="white", size=12, family="Inter, Arial, sans-serif"),
+                        textfont=dict(color="white", size=11, family="Inter, Arial, sans-serif"),
                         hovertemplate="Año %{label}<br>Ingresos CLP %{value:,.0f}<extra></extra>",
                     )
                 ]
@@ -1999,11 +2064,11 @@ def run_streamlit():
                 margin=dict(l=0, r=0, t=0, b=0),
                 annotations=[
                     dict(
-                        text=f"Total<br><b>{_money(total_ing)}</b>",
+                        text=f"Total<br><b>{_money_compact(total_ing)}</b>",
                         showarrow=False,
                         x=0.5,
                         y=0.5,
-                        font=dict(size=11, color="#344055", family="Inter, Arial, sans-serif"),
+                        font=dict(size=8, color="#344055", family="Inter, Arial, sans-serif"),
                     )
                 ],
             )
@@ -2066,7 +2131,7 @@ def run_streamlit():
             unsafe_allow_html=True,
         )
         with st.spinner("Cargando ingresos..."):
-            df_ing = _load(INGRESOS_CSV_URL, CACHE_VERSION, {"fecha", "parcela", "abono"})
+            df_ing = _load(INGRESOS_CSV_URL, data_cache_version, {"fecha", "parcela", "abono"})
 
         cols = list(df_ing.columns)
         col_parcela = "parcela" if "parcela" in cols else None
@@ -2258,7 +2323,7 @@ def run_streamlit():
 
     if selected_section == "Costos":
         with st.spinner("Cargando costos..."):
-            df_cost = _load(COSTOS_CSV_URL, CACHE_VERSION, {"monto", "proveedor", "cc"})
+            df_cost = _load(COSTOS_CSV_URL, data_cache_version, {"monto", "proveedor", "cc"})
 
         cols_cost = list(df_cost.columns)
         col_monto = _pick_col(cols_cost, ["monto", "total", "importe", "valor"])
@@ -2340,11 +2405,22 @@ def run_streamlit():
             text = str(value or "-").strip()
             return text if len(text) <= max_len else text[: max_len - 1] + "…"
 
+        cost_report_df = pd.DataFrame(
+            [
+                ["Total costos", _fmt_cost(total_cost)],
+                ["Registros", f"{n_reg:,}"],
+                ["Promedio mensual", _fmt_cost(avg_mensual)],
+                ["Top categoría", str(top_cat)],
+                ["Top proveedor", str(top_prov)],
+            ],
+            columns=["Indicador", "Valor"],
+        )
+
         st.markdown(
             """
             <style>
             .cost-page-head { margin:0 0 8px 0; }
-            .cost-page-title { color:#071326; font-size:18px; line-height:1.1; font-weight:900; margin:0; }
+            .cost-page-title { color:#071326; font-size:18px; line-height:1.22; font-weight:900; margin:0; overflow-wrap:anywhere; }
             .cost-section-title { color:#52647f; font-size:12px; line-height:1.3; font-weight:600; margin:8px 0 6px 0; }
             .cost-kpi-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin:0 0 10px 0; }
             .cost-kpi-card {
@@ -2411,11 +2487,30 @@ def run_streamlit():
             unsafe_allow_html=True,
         )
 
+        cost_head_left, cost_head_right = st.columns([1, 0.28], gap="large")
+        with cost_head_left:
+            st.markdown(
+                """
+                <div class="cost-page-head">
+                  <h1 class="cost-page-title">Costos - Análisis técnico</h1>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+        with cost_head_right:
+            try:
+                st.download_button(
+                    "Descargar reporte (PDF)",
+                    data=_df_to_pdf_bytes(cost_report_df, "Reporte de costos"),
+                    file_name="reporte_costos_condominio.pdf",
+                    mime="application/pdf",
+                    key="download_costos_pdf",
+                )
+            except RuntimeError as e:
+                st.error(str(e))
+
         st.markdown(
             f"""
-            <div class="cost-page-head">
-              <h1 class="cost-page-title">Costos — Análisis técnico</h1>
-            </div>
             <div class="cost-section-title">Resumen general</div>
             <div class="cost-kpi-grid">
               <div class="cost-kpi-card">
@@ -2678,14 +2773,14 @@ def run_streamlit():
 
     if selected_section == "Obligaciones":
         with st.spinner("Cargando obligaciones y pagos..."):
-            df_obl = _load(OBLIGACIONES_CSV_URL, CACHE_VERSION, {"ano", "anio", "año", "parcela", "gc"})
-            df_ing_o = _load(INGRESOS_CSV_URL, CACHE_VERSION, {"fecha", "parcela", "abono"})
-            df_prop = _load(PROPIETARIOS_CSV_URL, CACHE_VERSION, {"parcela", "propietario"})
-            df_td = _load_td23(TD23_CSV_URL, CACHE_VERSION)
-            df_mant = _load_mantencion(MANTENCION_CSV_URL, CACHE_VERSION)
+            df_obl = _load(OBLIGACIONES_CSV_URL, data_cache_version, {"ano", "anio", "año", "parcela", "gc"})
+            df_ing_o = _load(INGRESOS_CSV_URL, data_cache_version, {"fecha", "parcela", "abono"})
+            df_prop = _load(PROPIETARIOS_CSV_URL, data_cache_version, {"parcela", "propietario"})
+            df_td = _load_td23(TD23_CSV_URL, data_cache_version)
+            df_mant = _load_mantencion(MANTENCION_CSV_URL, data_cache_version)
             df_por_pagar_o = _load(
                 POR_PAGAR_CSV_URL,
-                CACHE_VERSION,
+                data_cache_version,
                 {"motivo", "presupuesto", "abono", "pendiente_a_proveedor"},
             )
 
@@ -2814,11 +2909,14 @@ def run_streamlit():
                   justify-content:space-between;
                   align-items:center;
                   gap:18px;
+                  min-width:0;
                 }
                 .obl-title-wrap {
                   display:flex;
                   align-items:center;
                   gap:16px;
+                  min-width:0;
+                  flex:1 1 auto;
                 }
                 .obl-page-icon {
                   width:44px;
@@ -2835,16 +2933,19 @@ def run_streamlit():
                 .obl-page-title {
                   color:#071326;
                   font-size:27px !important;
-                  line-height:1.15;
+                  line-height:1.22;
                   font-weight:900;
                   margin:0 !important;
                   padding:0 !important;
+                  overflow-wrap:anywhere;
                 }
                 .obl-page-subtitle {
                   color:#667085;
                   font-size:13px;
+                  line-height:1.3;
                   font-weight:800;
                   margin-top:6px;
+                  overflow-wrap:anywhere;
                 }
                 .obl-section-head {
                   margin:18px 0 10px 0;
@@ -2852,10 +2953,11 @@ def run_streamlit():
                 .obl-section-title {
                   color:#071326;
                   font-size:18px !important;
-                  line-height:1.2;
+                  line-height:1.28;
                   font-weight:900;
                   margin:0 !important;
                   padding:0 !important;
+                  overflow-wrap:anywhere;
                 }
                 .obl-section-subtitle {
                   color:#667085;
@@ -3043,9 +3145,10 @@ def run_streamlit():
                   align-items:center;
                   justify-content:flex-end;
                   gap:20px;
+                  flex:0 0 auto;
                 }
                 .obl-report-pill {
-                  height:36px;
+                  min-height:36px;
                   border:1px solid #dfe7f1;
                   border-radius:8px;
                   background:#fff;
@@ -3057,6 +3160,8 @@ def run_streamlit():
                   padding:0 16px;
                   font-size:13px;
                   font-weight:900;
+                  line-height:1.2;
+                  white-space:normal;
                 }
                 .obl-tool-icons {
                   display:flex;
@@ -3066,31 +3171,48 @@ def run_streamlit():
                   font-size:21px;
                   font-weight:900;
                 }
-                @media(max-width:1200px){.obl-page-head{display:block;}.obl-top-tools{justify-content:flex-start;margin-top:14px;}}
+                @media(max-width:1200px){.obl-page-head{display:block;}.obl-top-tools{justify-content:flex-start;margin-top:14px;flex-wrap:wrap;}}
                 @media(max-width:700px){.obl-actions{justify-content:flex-start;flex-wrap:wrap;}.obl-kpi-grid{grid-template-columns:1fr;}.obl-search{min-width:100%;}}
                 </style>
                 """,
                 unsafe_allow_html=True,
             )
 
-            st.markdown(
-                """
-                <div class="obl-page-head">
-                  <div class="obl-title-wrap">
-                    <div class="obl-page-icon">▤</div>
-                    <div>
-                      <h1 class="obl-page-title">Obligaciones y pagos</h1>
-                      <div class="obl-page-subtitle">Estado de pagos, pendientes y abonos por parcela</div>
-                    </div>
-                  </div>
-                  <div class="obl-top-tools">
-                    <div class="obl-report-pill">⇩ <span>Descargar reporte (PDF)</span></div>
-                    <div class="obl-tool-icons"><span>☆</span><span>✎</span><span>⋮</span></div>
-                  </div>
-                </div>
-                """,
-                unsafe_allow_html=True,
+            obl_report_base = tabla.copy().rename(
+                columns={
+                    "parcela": "Parcela",
+                    "gc_total": "Obligación GC",
+                    "pagado": "Pagado",
+                    "pendiente": "Diferencia",
+                }
             )
+            obl_head_left, obl_head_right = st.columns([1, 0.28], gap="large")
+            with obl_head_left:
+                st.markdown(
+                    """
+                    <div class="obl-page-head">
+                      <div class="obl-title-wrap">
+                        <div class="obl-page-icon">▤</div>
+                        <div>
+                          <h1 class="obl-page-title">Obligaciones y pagos</h1>
+                          <div class="obl-page-subtitle">Estado de pagos, pendientes y abonos por parcela</div>
+                        </div>
+                      </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+            with obl_head_right:
+                try:
+                    st.download_button(
+                        "Descargar reporte (PDF)",
+                        data=_df_to_pdf_bytes(obl_report_base, "Reporte de obligaciones"),
+                        file_name="reporte_obligaciones_condominio.pdf",
+                        mime="application/pdf",
+                        key="download_obligaciones_pdf",
+                    )
+                except RuntimeError as e:
+                    st.error(str(e))
             gc_detail_slot = st.empty()
 
             tabla_show = tabla_full.copy()
