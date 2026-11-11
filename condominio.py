@@ -4,54 +4,24 @@ Condominio Los Queltehues III - Dashboard (General + Ingresos V2.3 + Costos + Ob
 
 from __future__ import annotations
 
-import base64
 import html
-import io
 import re
 from typing import Optional
 
 import pandas as pd
 
 
-CACHE_VERSION = 2
+from condominio_data import PUBLICATION_ID, PUBLICATION_URL, SHEETS, URLS, load_snapshot, parse_money
+from condominio_traceability import money as _money_clp
 
-INGRESOS_CSV_URL = (
-    "https://docs.google.com/spreadsheets/d/e/"
-    "2PACX-1vREdYwR32RK_ecff9UJ-DdGNjvfdnoO55jpToO-KLG62izQTqFovnWUTM-ttfmR9DNt6N1lSNKMzkjZ/"
-    "pub?gid=1653640714&single=true&output=csv"
-)
-
-COSTOS_CSV_URL = (
-    "https://docs.google.com/spreadsheets/d/e/"
-    "2PACX-1vREdYwR32RK_ecff9UJ-DdGNjvfdnoO55jpToO-KLG62izQTqFovnWUTM-ttfmR9DNt6N1lSNKMzkjZ/"
-    "pub?gid=341023122&single=true&output=csv"
-)
-
-OBLIGACIONES_CSV_URL = (
-    "https://docs.google.com/spreadsheets/d/e/"
-    "2PACX-1vREdYwR32RK_ecff9UJ-DdGNjvfdnoO55jpToO-KLG62izQTqFovnWUTM-ttfmR9DNt6N1lSNKMzkjZ/"
-    "pub?gid=2141405996&single=true&output=csv"
-)
-
-PROPIETARIOS_CSV_URL = (
-    "https://docs.google.com/spreadsheets/d/e/"
-    "2PACX-1vREdYwR32RK_ecff9UJ-DdGNjvfdnoO55jpToO-KLG62izQTqFovnWUTM-ttfmR9DNt6N1lSNKMzkjZ/"
-    "pub?gid=782319858&single=true&output=csv"
-)
-
-TD23_CSV_URL = OBLIGACIONES_CSV_URL
-
-MANTENCION_CSV_URL = (
-    "https://docs.google.com/spreadsheets/d/e/"
-    "2PACX-1vREdYwR32RK_ecff9UJ-DdGNjvfdnoO55jpToO-KLG62izQTqFovnWUTM-ttfmR9DNt6N1lSNKMzkjZ/"
-    "pub?gid=1564429404&single=true&output=csv"
-)
-
-POR_PAGAR_CSV_URL = (
-    "https://docs.google.com/spreadsheets/d/e/"
-    "2PACX-1vREdYwR32RK_ecff9UJ-DdGNjvfdnoO55jpToO-KLG62izQTqFovnWUTM-ttfmR9DNt6N1lSNKMzkjZ/"
-    "pub?gid=1804083007&single=true&output=csv"
-)
+CACHE_VERSION = 4
+INGRESOS_CSV_URL = URLS["ingresos"]
+COSTOS_CSV_URL = URLS["costos"]
+OBLIGACIONES_CSV_URL = URLS["obligaciones"]
+PROPIETARIOS_CSV_URL = URLS["propietarios"]
+TD23_CSV_URL = URLS["proyectos"]
+MANTENCION_CSV_URL = URLS["mantencion"]
+POR_PAGAR_CSV_URL = URLS["proveedores"]
 
 
 def _normalize_colname(c: str) -> str:
@@ -72,303 +42,13 @@ def _pick_col(cols: list[str], candidates: list[str]) -> Optional[str]:
     return None
 
 
-def load_data(url: str, expected_cols: Optional[set[str]] = None) -> pd.DataFrame:
-    df_raw = pd.read_csv(url, header=None, dtype=str)
-
-    expected = expected_cols or {"fecha", "parcela", "abono"}
-    header_row = None
-    header_norm = None
-
-    for i, row in df_raw.head(50).iterrows():
-        norm = [_normalize_colname(c) for c in row.tolist()]
-        if expected.issubset(set(norm)):
-            header_row = i
-            header_norm = norm
-            break
-
-    if header_row is None:
-        header_row = 0
-        header_norm = [_normalize_colname(c) for c in df_raw.iloc[0].tolist()]
-
-    df = df_raw.iloc[header_row + 1 :].copy()
-    df.columns = header_norm
-
-    # Evita columnas duplicadas
-    seen = {}
-    new_cols = []
-    for c in df.columns:
-        count = seen.get(c, 0)
-        if count == 0:
-            new_cols.append(c)
-        else:
-            new_cols.append(f"{c}_{count}")
-        seen[c] = count + 1
-    df.columns = new_cols
-
-    df = df.dropna(axis=1, how="all")
-    df = df.loc[:, [c for c in df.columns if not c.startswith("nan")]]
-    return df
-
-
 def _parse_monto_series(series: pd.Series) -> pd.Series:
-    s = series.astype(str)
-    neg_mask = s.str.contains(r"^\(.*\)$", regex=True)
-    s = s.str.replace(r"[^\d\-]", "", regex=True).replace("", pd.NA)
-    out = pd.to_numeric(s, errors="coerce")
-    out.loc[neg_mask] = -out.loc[neg_mask].abs()
-    return out
+    return parse_money(series)
 
 
-def _df_to_pdf_bytes(df: pd.DataFrame, title: str) -> bytes:
-    try:
-        from reportlab.lib.pagesizes import A4, landscape
-        from reportlab.lib import colors
-        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-        from reportlab.lib.styles import getSampleStyleSheet
-    except Exception as e:
-        raise RuntimeError("Falta reportlab. Instala con: pip install reportlab") from e
-
-    buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=landscape(A4), leftMargin=24, rightMargin=24, topMargin=24, bottomMargin=24)
-    styles = getSampleStyleSheet()
-    story = [Paragraph(title, styles["Heading2"]), Spacer(1, 12)]
-
-    data = [list(df.columns)] + df.values.tolist()
-    table = Table(data, repeatRows=1)
-    table.setStyle(
-        TableStyle(
-            [
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0B1F2A")),
-                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                ("FONTSIZE", (0, 0), (-1, 0), 10),
-                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-                ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#E2E8F0")),
-                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.whitesmoke, colors.HexColor("#F4F7FA")]),
-            ]
-        )
-    )
-    story.append(table)
-    doc.build(story)
-    buffer.seek(0)
-    return buffer.read()
-
-
-def _fig_to_base64_png(fig, width: int = 1100, height: int = 650) -> str:
-    try:
-        import plotly.io as pio
-    except Exception as e:
-        raise RuntimeError("Falta Plotly. Instala con: pip install plotly") from e
-
-    try:
-        img_bytes = pio.to_image(fig, format="png", width=width, height=height, scale=2)
-    except Exception as e:
-        msg = str(e)
-        if "kaleido" in msg.lower():
-            raise RuntimeError("Falta Kaleido. Instala con: pip install kaleido") from e
-        raise
-    return base64.b64encode(img_bytes).decode("ascii")
-
-
-def _build_obligaciones_report_pdf_bytes(
-    kpi_data: dict,
-    fig_acum,
-    tabla_show: pd.DataFrame,
-    fig_gc,
-    fig_m,
-    fig_p,
-    fig_cost_cat,
-    fig_cost_prov,
-) -> bytes:
-    try:
-        from reportlab.lib.pagesizes import A4, landscape
-        from reportlab.lib import colors
-        from reportlab.lib.styles import getSampleStyleSheet
-        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image, PageBreak
-    except Exception as e:
-        raise RuntimeError("Falta reportlab. Instala con: pip install reportlab") from e
-
-    def _fmt_money(v):
-        try:
-            return f"${float(v):,.0f}"
-        except Exception:
-            return v
-    def _to_num(v):
-        try:
-            return float(v)
-        except Exception:
-            s = re.sub(r"[^\d\.\-]", "", str(v))
-            try:
-                return float(s) if s else 0.0
-            except Exception:
-                return 0.0
-
-    table_main = tabla_show.copy()
-    table_raw = tabla_show.copy()
-    for col in table_main.columns:
-        if col not in ("Parcela", "Propietario"):
-            table_main[col] = table_main[col].apply(_fmt_money)
-
-    styles = getSampleStyleSheet()
-    buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=landscape(A4), leftMargin=24, rightMargin=24, topMargin=24, bottomMargin=24)
-    story = [Paragraph("Reporte de Obligaciones", styles["Heading2"]), Spacer(1, 10)]
-
-    story.append(Paragraph("Ingresos, Costos y Neto (mensual)", styles["Heading3"]))
-    kpi_rows = [
-        ["Total ingresos", _fmt_money(kpi_data.get("total_ing", 0))],
-        ["Total costos", _fmt_money(kpi_data.get("total_cost", 0))],
-        ["Neto acumulado - banco", _fmt_money(kpi_data.get("total_neto", 0))],
-        ["Pendiente de pago total", _fmt_money(kpi_data.get("pendiente_total", 0))],
-        ["% no pago total", f'{kpi_data.get("pct_no_pago", 0):.1f}%'],
-        ["Mejor año", str(kpi_data.get("best_year", ""))],
-    ]
-    t_kpi = Table(kpi_rows, colWidths=[220, 160])
-    t_kpi.setStyle(
-        TableStyle(
-            [
-                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#F8FAFC")),
-                ("BOX", (0, 0), (-1, -1), 0.25, colors.HexColor("#E2E8F0")),
-                ("INNERGRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#E2E8F0")),
-                ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
-                ("FONTSIZE", (0, 0), (-1, -1), 9),
-                ("TEXTCOLOR", (0, 0), (-1, -1), colors.HexColor("#0B1F2A")),
-                ("ALIGN", (1, 0), (1, -1), "RIGHT"),
-            ]
-        )
-    )
-    story.append(t_kpi)
-    story.append(Spacer(1, 8))
-
-    if fig_acum is not None:
-        img_acum = _fig_to_base64_png(fig_acum, width=1000, height=520)
-        story.append(Image(io.BytesIO(base64.b64decode(img_acum)), width=600, height=300))
-        story.append(Spacer(1, 10))
-
-    story.append(PageBreak())
-    story.append(Paragraph("Obligación acumulada vs Pagos", styles["Heading3"]))
-    data_main = [list(table_main.columns)] + table_main.values.tolist()
-    t_main = Table(data_main, repeatRows=1)
-    table_style = [
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0B1F2A")),
-        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-        ("FONTSIZE", (0, 0), (-1, 0), 8),
-        ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#E2E8F0")),
-        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.whitesmoke, colors.HexColor("#F4F7FA")]),
-    ]
-    pending_cols = [c for c in table_raw.columns if c.startswith("Pendiente")]
-    col_idx = {c: i for i, c in enumerate(table_raw.columns)}
-    total_col_idx = col_idx.get("Total por pagar")
-    for r in range(len(table_raw)):
-        total_val = _to_num(table_raw.iloc[r]["Total por pagar"]) if "Total por pagar" in table_raw.columns else 0.0
-        if total_val > 0:
-            table_style.append(("BACKGROUND", (0, r + 1), (-1, r + 1), colors.HexColor("#F4DCDC")))
-        if total_col_idx is not None and total_val > 0:
-            table_style.append(("BACKGROUND", (total_col_idx, r + 1), (total_col_idx, r + 1), colors.HexColor("#5A2A2A")))
-            table_style.append(("TEXTCOLOR", (total_col_idx, r + 1), (total_col_idx, r + 1), colors.white))
-            table_style.append(("FONTNAME", (total_col_idx, r + 1), (total_col_idx, r + 1), "Helvetica-Bold"))
-    t_main.setStyle(TableStyle(table_style))
-    story.append(t_main)
-    story.append(Spacer(1, 10))
-
-    story.append(PageBreak())
-    story.append(Paragraph("Distribución de pendientes", styles["Heading3"]))
-    pie_imgs = []
-    for fig in (fig_gc, fig_m, fig_p):
-        if fig is not None:
-            img_b64 = _fig_to_base64_png(fig, width=600, height=380)
-            pie_imgs.append(Image(io.BytesIO(base64.b64decode(img_b64)), width=240, height=160))
-        else:
-            pie_imgs.append(Spacer(1, 160))
-    story.append(Table([pie_imgs], colWidths=[260, 260, 260]))
-    story.append(Spacer(1, 8))
-
-    if fig_cost_cat is not None:
-        img_cat = _fig_to_base64_png(fig_cost_cat, width=1000, height=520)
-        story.append(Paragraph("Costo por categoría", styles["Heading3"]))
-        story.append(Image(io.BytesIO(base64.b64decode(img_cat)), width=600, height=300))
-        story.append(Spacer(1, 8))
-
-    if fig_cost_prov is not None:
-        img_prov = _fig_to_base64_png(fig_cost_prov, width=900, height=520)
-        story.append(Paragraph("Costos por proveedor (top 12)", styles["Heading3"]))
-        story.append(Image(io.BytesIO(base64.b64decode(img_prov)), width=520, height=300))
-
-    doc.build(story)
-    buffer.seek(0)
-    return buffer.read()
-    def _fmt_money(v):
-        try:
-            return f"${float(v):,.0f}"
-        except Exception:
-            return v
-
-    table_obl = oblig_show.copy()
-    if "GC total por año" in table_obl.columns:
-        table_obl["GC total por año"] = table_obl["GC total por año"].apply(_fmt_money)
-
-    table_main = tabla_show.copy()
-    for col in table_main.columns:
-        if col not in ("Parcela", "Propietario"):
-            table_main[col] = table_main[col].apply(_fmt_money)
-
-    def _table_html(df):
-        return df.to_html(index=False, classes="tbl", escape=False)
-
-    img_obl = _fig_to_base64_png(fig_obl_pie) if fig_obl_pie is not None else ""
-    img_gc = _fig_to_base64_png(fig_gc) if fig_gc is not None else ""
-    img_m = _fig_to_base64_png(fig_m) if fig_m is not None else ""
-    img_p = _fig_to_base64_png(fig_p) if fig_p is not None else ""
-
-    html = f"""
-<!doctype html>
-<html lang="es">
-<head>
-<meta charset="utf-8" />
-<title>Reporte Obligaciones</title>
-<style>
-  body {{font-family: Arial, sans-serif; color:#0f172a; margin:24px;}}
-  h1 {{margin:0 0 12px 0; font-size:22px;}}
-  h2 {{margin:20px 0 10px 0; font-size:16px; color:#0B1F2A;}}
-  .row {{display:flex; gap:16px; align-items:flex-start;}}
-  .col {{flex:1;}}
-  .card {{border:1px solid #E2E8F0; border-radius:12px; padding:12px; background:#fff;}}
-  .tbl {{width:100%; border-collapse:collapse; font-size:12px;}}
-  .tbl th {{background:#0B1F2A; color:#F8FAFC; font-weight:700; padding:6px 8px;}}
-  .tbl td {{border:1px solid #E2E8F0; padding:6px 8px; text-align:right;}}
-  .tbl td:first-child, .tbl th:first-child {{text-align:center;}}
-  .tbl td:nth-child(2), .tbl th:nth-child(2) {{text-align:left;}}
-  .note {{font-size:11px; color:#64748B;}}
-  img {{max-width:100%; height:auto;}}
-  .pie-row {{display:flex; gap:12px;}}
-  .pie-row .card {{flex:1;}}
-</style>
-</head>
-<body>
-  <h1>Reporte de Obligaciones</h1>
-
-  <h2>Obligación por año (GC)</h2>
-  <div class="row">
-    <div class="col card">{_table_html(table_obl)}</div>
-    <div class="col card">{f'<img src="data:image/png;base64,{img_obl}" alt="Distribución GC por año"/>' if img_obl else ''}</div>
-  </div>
-
-  <h2>Obligación acumulada vs Pagos</h2>
-  <div class="card">{_table_html(table_main)}</div>
-
-  <h2>Distribución de pendientes</h2>
-  <div class="pie-row">
-    <div class="card">{f'<img src="data:image/png;base64,{img_gc}" alt="Pendiente GC"/>' if img_gc else ''}</div>
-    <div class="card">{f'<img src="data:image/png;base64,{img_m}" alt="Pendiente mantención"/>' if img_m else ''}</div>
-    <div class="card">{f'<img src="data:image/png;base64,{img_p}" alt="Pendiente proyecto"/>' if img_p else ''}</div>
-  </div>
-
-  <p class="note">Fuente: Google Sheets (CSV publicado). Generado por dashboard Condominio.</p>
-</body>
-</html>
-"""
-    return html
+def _df_to_pdf_bytes(df: pd.DataFrame, title: str, revision: str = "", captured_at: str = "") -> bytes:
+    from control_obligaciones_pdf import build_table_pdf
+    return build_table_pdf(df, title, revision, captured_at, PUBLICATION_URL)
 
 
 def build_series_mensual_ingresos(df: pd.DataFrame) -> pd.DataFrame:
@@ -399,6 +79,8 @@ def build_series_mensual_costos(df: pd.DataFrame) -> pd.DataFrame:
         return pd.DataFrame(columns=["periodo", "costos"])
 
     base = df.copy()
+    if 'estado_pago' in base:
+        base = base[base.estado_pago.eq('Pagado')]
     base["fecha_norm"] = pd.to_datetime(base[col_fecha], dayfirst=True, errors="coerce")
     base["monto_norm"] = _parse_monto_series(base[col_monto])
     base = base.dropna(subset=["fecha_norm", "monto_norm"])
@@ -411,111 +93,11 @@ def build_series_mensual_costos(df: pd.DataFrame) -> pd.DataFrame:
     )
 
 
-def build_obligaciones_vs_pagos(
-    df_obl: pd.DataFrame,
-    df_ing: pd.DataFrame,
-    concepto_col: Optional[str] = None,
-    include_keywords: Optional[list[str]] = None,
-    exclude_keywords: Optional[list[str]] = None,
-) -> tuple[pd.DataFrame, pd.DataFrame]:
-    cols_o = list(df_obl.columns)
-    col_anio = _pick_col(cols_o, ["ano", "anio", "año"])
-    col_gc = _pick_col(cols_o, ["gc", "gasto_comun", "gastos_comunes", "total"])
-
-    if not (col_anio and col_gc):
-        empty = pd.DataFrame(columns=["anio", "gc_total"])
-        return empty, pd.DataFrame(columns=["parcela", "pagado", "gc_total", "pendiente"])
-
-    base_o = df_obl.copy()
-    base_o["anio"] = pd.to_numeric(base_o[col_anio].astype(str).str.replace(r"[^\d]", "", regex=True), errors="coerce")
-    base_o["gc_total"] = _parse_monto_series(base_o[col_gc])
-    base_o = base_o.dropna(subset=["anio", "gc_total"])
-
-    oblig_anual = (
-        base_o.groupby("anio", as_index=False)["gc_total"]
-        .sum()
-        .sort_values("anio")
-    )
-    gc_total_acum = float(oblig_anual["gc_total"].sum()) if not oblig_anual.empty else 0.0
-
-    cols_i = list(df_ing.columns)
-    col_fecha = _pick_col(cols_i, ["fecha"])
-    col_parc_i = _pick_col(cols_i, ["parcela"])
-    col_abono = next((c for c in cols_i if c.startswith("abono")), None)
-
-    if not (col_fecha and col_parc_i and col_abono):
-        empty = pd.DataFrame(columns=["anio", "gc_total"])
-        return empty, pd.DataFrame(columns=["parcela", "pagado", "gc_total", "pendiente"])
-
-    base_i = df_ing.copy()
-    base_i["fecha_norm"] = pd.to_datetime(base_i[col_fecha], dayfirst=True, errors="coerce")
-    base_i["parcela"] = pd.to_numeric(base_i[col_parc_i].astype(str).str.replace(r"[^\d]", "", regex=True), errors="coerce")
-    base_i["pagado"] = _parse_monto_series(base_i[col_abono])
-    base_i = base_i.dropna(subset=["parcela", "pagado"])
-
-    if concepto_col and concepto_col in base_i.columns:
-        texto = base_i[concepto_col].astype(str).str.lower()
-        if include_keywords:
-            inc_mask = False
-            for kw in include_keywords:
-                inc_mask = inc_mask | texto.str.contains(kw.lower(), regex=False)
-            base_i = base_i[inc_mask]
-        if exclude_keywords:
-            for kw in exclude_keywords:
-                base_i = base_i[~texto.str.contains(kw.lower(), regex=False)]
-
-    pagos = base_i.groupby("parcela", as_index=False)["pagado"].sum()
-
-    parcelas = pd.DataFrame({"parcela": list(range(17, 37))})
-    out = parcelas.merge(pagos, on="parcela", how="left").fillna({"pagado": 0})
-    out["gc_total"] = gc_total_acum
-    out["pendiente"] = out["gc_total"] - out["pagado"]
-    return oblig_anual, out
-
-
-def load_td23_table(url: str) -> pd.DataFrame:
-    df_raw = pd.read_csv(url, header=None, dtype=str)
-    header_row = None
-    header_cols = None
-    header_idx = None
-    for i, row in df_raw.head(50).iterrows():
-        norm = [_normalize_colname(c) for c in row.tolist()]
-        if "cc" in norm and "monto" in norm and "total" in norm:
-            header_row = i
-            header_cols = norm
-            header_idx = [idx for idx, val in enumerate(norm) if val in ("cc", "monto", "obs", "total")]
-            break
-    if header_row is None or header_idx is None:
-        return pd.DataFrame(columns=["cc", "monto", "obs", "total"])
-
-    df = df_raw.iloc[header_row + 1 :].copy()
-    df = df.iloc[:, header_idx]
-    df.columns = [header_cols[idx] for idx in header_idx]
-    df = df.dropna(how="all")
-    df = df.rename(columns={"cc": "cc", "monto": "monto", "obs": "obs", "total": "total"})
-    df = df[df["cc"].notna()]
-    return df
-
-
-def load_mantencion_table(url: str) -> pd.DataFrame:
-    df = pd.read_csv(url)
-    df.columns = [_normalize_colname(c) for c in df.columns]
-    col_parc = _pick_col(list(df.columns), ["parcela", "n_parcela", "numero_parcela", "lote", "unidad", "sitio"])
-    col_val = _pick_col(list(df.columns), ["monto", "valor", "mantencion", "mantenimiento", "total"])
-    if not col_parc or not col_val:
-        return pd.DataFrame(columns=["parcela", "mantencion"])
-    out = pd.DataFrame()
-    out["parcela"] = pd.to_numeric(df[col_parc].astype(str).str.replace(r"[^\d]", "", regex=True), errors="coerce")
-    out["mantencion"] = _parse_monto_series(df[col_val])
-    out = out.dropna(subset=["parcela"])
-    return out
-
-
 def run_streamlit():
     import streamlit as st
 
     st.set_page_config(
-        page_title="Condominio Los Quelrehues III - Dashboard",
+        page_title="Condominio Los Queltehues III · Administración",
         page_icon="🏢",
         layout="wide",
         initial_sidebar_state="expanded",
@@ -543,7 +125,7 @@ def run_streamlit():
             "blue": "#0f6bff",
         }
         color = color_map.get(tone, "#0f6bff")
-        spark = _sparkline_svg(color, spark_points) if spark_points else ""
+        spark = ""  # No se dibujan tendencias sin una serie real de origen.
         return (
             f'<div class="dash-kpi-card dash-{tone}">'
             f'<div class="dash-icon">{icon}</div>'
@@ -666,10 +248,9 @@ def run_streamlit():
           white-space: pre-line;
         }
         .side-about {
-          position: fixed;
-          bottom: 2rem;
-          left: 0;
-          width: 176px;
+          position: static;
+          margin-top: 24px;
+          width: 100%;
           display: grid;
           place-items: center;
           gap: 6px;
@@ -1009,6 +590,10 @@ def run_streamlit():
         unsafe_allow_html=True,
     )
 
+    if st.session_state.get("data_publication") != PUBLICATION_ID:
+        st.session_state["data_publication"] = PUBLICATION_ID
+        st.session_state["data_cache_version"] = CACHE_VERSION
+
     if "data_cache_version" not in st.session_state:
         st.session_state["data_cache_version"] = CACHE_VERSION
 
@@ -1019,16 +604,19 @@ def run_streamlit():
             """,
             unsafe_allow_html=True,
         )
-        section_options = ["General", "Costos", "Obligaciones"]
+        section_options = ["General", "Ingresos V2.3", "Costos", "Obligaciones", "Control de obligaciones", "Fuentes y control"]
         section_labels = {
             "General": "⌂\nGeneral",
+            "Ingresos V2.3": "↗\nIngresos",
+            "Fuentes y control": "✓\nFuentes y control",
             "Costos": "$\nCostos",
             "Obligaciones": "▤\nObligaciones",
+            "Control de obligaciones": "◎\nControl de obligaciones",
         }
         selected_section = st.radio(
             "Navegación",
             section_options,
-            index=0,
+            index=4 if st.query_params.get("vista") == "control" else 0,
             format_func=lambda option: section_labels[option],
             label_visibility="collapsed",
             key="selected_section",
@@ -1047,362 +635,51 @@ def run_streamlit():
             unsafe_allow_html=True,
         )
 
-    @st.cache_data(show_spinner=False)
-    def _load(url_value: str, cache_version: int, expected_cols: Optional[set[str]] = None) -> pd.DataFrame:
-        return load_data(url_value, expected_cols)
-
-    @st.cache_data(show_spinner=False)
-    def _load_td23(url_value: str, cache_version: int) -> pd.DataFrame:
-        return load_td23_table(url_value)
-
-    @st.cache_data(show_spinner=False)
-    def _load_mantencion(url_value: str, cache_version: int) -> pd.DataFrame:
-        return load_mantencion_table(url_value)
-
     data_cache_version = st.session_state["data_cache_version"]
 
-    @st.cache_data(show_spinner=False)
-    def _make_obligaciones_report(cache_version: int) -> bytes:
-        df_obl = _load(OBLIGACIONES_CSV_URL, cache_version, {"ano", "anio", "año", "parcela", "gc"})
-        df_ing_o = _load(INGRESOS_CSV_URL, cache_version, {"fecha", "parcela", "abono"})
-        df_prop = _load(PROPIETARIOS_CSV_URL, cache_version, {"parcela", "propietario"})
-        df_td = _load_td23(TD23_CSV_URL, cache_version)
-        df_mant = _load_mantencion(MANTENCION_CSV_URL, cache_version)
+    @st.cache_data(show_spinner=False, ttl=300)
+    def _get_snapshot(publication: str, version: int):
+        return load_snapshot()
 
-        cols_ing_o = list(df_ing_o.columns)
-        cand_concepto = ["detalle", "concepto", "glosa", "descripcion", "tipo", "categoria", "cc", "ccc", "medio"]
-        concepto_col_val = next((c for c in cand_concepto if c in cols_ing_o), None)
-        include_list = ["gasto", "gc"]
-        exclude_list = ["proyecto"]
+    try:
+        with st.spinner("Validando las fuentes y conciliando la nueva planilla…"):
+            snapshot = _get_snapshot(PUBLICATION_ID, data_cache_version)
+    except Exception as exc:
+        st.error(f"No se pudo cargar la publicación activa: {exc}")
+        st.info("Comprueba la planilla publicada y vuelve a pulsar Actualizar data del URL.")
+        st.stop()
 
-        oblig_anual, tabla = build_obligaciones_vs_pagos(
-            df_obl,
-            df_ing_o,
-            concepto_col=concepto_col_val,
-            include_keywords=include_list,
-            exclude_keywords=exclude_list,
-        )
-        if tabla.empty:
-            raise RuntimeError("No se pudieron construir obligaciones vs pagos. Revisa columnas de año/parcela/gc.")
+    def _load(url_value: str, cache_version: int, expected_cols=None) -> pd.DataFrame:
+        if expected_cols in ({"parcela", "propietario"}, {"n_parcela", "nombre"}):
+            return snapshot.frames["propietarios"].copy()
+        key = next((key for key, value in URLS.items() if value == url_value and key != "propietarios"), None)
+        if key is None or key not in snapshot.frames:
+            raise ValueError("La fuente solicitada no pertenece a la publicación activa.")
+        return snapshot.frames[key].copy()
 
-        tabla_full = tabla.copy()
-        tabla_full["pendiente_pos"] = tabla_full["pendiente"].clip(lower=0)
-        tabla_full["saldo_favor"] = (-tabla_full["pendiente"]).clip(lower=0)
+    def _load_td23(url_value: str, cache_version: int) -> pd.DataFrame:
+        return snapshot.frames["proyecto_config"].copy()
 
-        if not df_mant.empty:
-            df_mant = df_mant.groupby("parcela", as_index=False)["mantencion"].sum()
-            tabla_full = tabla_full.merge(df_mant, on="parcela", how="left").fillna({"mantencion": 0})
+    def _load_mantencion(url_value: str, cache_version: int) -> pd.DataFrame:
+        frame = snapshot.frames["mantencion"].copy()
+        return pd.DataFrame({"parcela": pd.to_numeric(frame.parcela, errors="coerce"), "mantencion": parse_money(frame.monto)})
 
-            cols_ing = list(df_ing_o.columns)
-            col_cc_ing = _pick_col(cols_ing, ["cc", "categoria", "rubro", "ccc"])
-            col_abono_ing = _pick_col(cols_ing, ["abono"])
-            col_parc_ing = _pick_col(cols_ing, ["parcela"])
-            if col_cc_ing and col_abono_ing and col_parc_ing:
-                ing_m = df_ing_o.copy()
-                ing_m["parcela"] = pd.to_numeric(
-                    ing_m[col_parc_ing].astype(str).str.replace(r"[^\d]", "", regex=True),
-                    errors="coerce",
-                )
-                ing_m["monto_norm"] = _parse_monto_series(ing_m[col_abono_ing])
-                ing_m = ing_m.dropna(subset=["parcela", "monto_norm"])
-                cc_text = (
-                    ing_m[col_cc_ing]
-                    .astype(str)
-                    .str.lower()
-                    .str.replace("á", "a")
-                    .str.replace("é", "e")
-                    .str.replace("í", "i")
-                    .str.replace("ó", "o")
-                    .str.replace("ú", "u")
-                    .str.replace("ñ", "n")
-                )
-                mask_mant = cc_text.str.contains("mantencion", regex=False) | cc_text.str.contains("mantenimiento", regex=False)
-                pagos_mant = (
-                    ing_m[mask_mant]
-                    .groupby("parcela", as_index=False)["monto_norm"]
-                    .sum()
-                    .rename(columns={"monto_norm": "pagado_mant"})
-                )
-                tabla_full = tabla_full.merge(pagos_mant, on="parcela", how="left").fillna({"pagado_mant": 0})
-                tabla_full["mantencion"] = (tabla_full["mantencion"] - tabla_full["pagado_mant"]).clip(lower=0)
-                tabla_full = tabla_full.drop(columns=["pagado_mant"])
+    def _canonical():
+        annual = snapshot.annual.rename(columns={"Año": "anio", "Cargo por parcela": "gc_total"})
+        table = snapshot.legacy_balances()
+        return annual.copy(), table[["parcela", "pagado", "gc_total", "pendiente"]].copy()
 
-            tabla_full = tabla_full.rename(columns={"mantencion": "Mantención"})
+    from condominio_traceability import render_source_bar, render_sources
+    render_source_bar(st, snapshot)
+    if selected_section == "Fuentes y control":
+        render_sources(st, snapshot)
+        return
 
-        if not df_td.empty:
-            cols_ing = list(df_ing_o.columns)
-            col_cc_ing = _pick_col(cols_ing, ["cc", "categoria", "rubro", "ccc"])
-            if col_cc_ing:
-                df_ing_cc = df_ing_o.copy()
-                df_ing_cc["parcela"] = pd.to_numeric(
-                    df_ing_cc[_pick_col(cols_ing, ["parcela"])].astype(str).str.replace(r"[^\d]", "", regex=True),
-                    errors="coerce",
-                )
-                df_ing_cc["monto_norm"] = _parse_monto_series(df_ing_cc[_pick_col(cols_ing, ["abono"])])
-                df_ing_cc = df_ing_cc.dropna(subset=["parcela", "monto_norm"])
-                df_ing_cc["cc_norm"] = df_ing_cc[col_cc_ing].astype(str).str.lower()
-
-                df_td = df_td.copy()
-                df_td["cc_norm"] = df_td["cc"].astype(str).str.lower()
-                df_td["monto_norm"] = _parse_monto_series(df_td["monto"])
-
-                for _, row in df_td.iterrows():
-                    cc_name = str(row["cc"]).strip()
-                    if not cc_name:
-                        continue
-                    monto_cc = float(row["monto_norm"]) if pd.notna(row["monto_norm"]) else 0.0
-                    if monto_cc == 0:
-                        continue
-                    mask_cc = df_ing_cc["cc_norm"].str.contains(cc_name.lower(), regex=False)
-                    pagos_cc = (
-                        df_ing_cc[mask_cc]
-                        .groupby("parcela", as_index=False)["monto_norm"]
-                        .sum()
-                        .rename(columns={"monto_norm": "pagado_cc"})
-                    )
-                    col_name = f"Pendiente {cc_name}"
-                    tabla_full = tabla_full.merge(pagos_cc, on="parcela", how="left").fillna({"pagado_cc": 0})
-                    tabla_full[col_name] = (monto_cc - tabla_full["pagado_cc"]).clip(lower=0)
-                    tabla_full = tabla_full.drop(columns=["pagado_cc"])
-
-        gc_total_parcela = float(tabla_full["gc_total"].max()) if not tabla_full.empty else 0.0
-        total_pendiente = float(tabla_full["pendiente_pos"].sum()) if not tabla_full.empty else 0.0
-        pendiente_mant = float(tabla_full["Mantención"].sum()) if "Mantención" in tabla_full.columns else 0.0
-        cc_cols = [c for c in tabla_full.columns if c.startswith("Pendiente ")]
-        pendiente_proy = float(tabla_full[cc_cols].sum().sum()) if cc_cols else 0.0
-
-        tabla_show = tabla_full.copy()
-        tabla_show = tabla_show.rename(
-            columns={
-                "parcela": "Parcela",
-                "pagado": "Pagado",
-                "gc_total": "GC total",
-                "pendiente": "Diferencia",
-                "pendiente_pos": "Pendiente",
-                "saldo_favor": "GC por anticipado",
-                "Mantención": "Pendiente mantención",
-            }
-        )
-        cols_prop = list(df_prop.columns)
-        col_parc_p = _pick_col(cols_prop, ["n_parcela", "numero_parcela", "parcela", "lote", "unidad", "sitio"])
-        col_name = _pick_col(cols_prop, ["nombre", "propietario", "dueno", "dueño"])
-        if col_parc_p and col_name:
-            prop_map = df_prop.copy()
-            prop_map["Parcela"] = pd.to_numeric(
-                prop_map[col_parc_p].astype(str).str.replace(r"[^\d]", "", regex=True),
-                errors="coerce",
-            )
-            prop_map = prop_map.dropna(subset=["Parcela"])
-            prop_map = prop_map[["Parcela", col_name]].rename(columns={col_name: "Propietario"})
-            tabla_show = tabla_show.merge(prop_map, on="Parcela", how="left")
-        else:
-            tabla_show["Propietario"] = ""
-        if "pendiente" in tabla_show.columns:
-            tabla_show = tabla_show.drop(columns=["pendiente"])
-        if "Diferencia" in tabla_show.columns:
-            tabla_show = tabla_show.drop(columns=["Diferencia"])
-        extra_cc_cols = [
-            c for c in tabla_show.columns
-            if c.startswith("Pendiente ") and c not in ("Pendiente mantención", "Pendiente GC")
-        ]
-        total_cols = ["Pendiente", "Pendiente mantención"] + extra_cc_cols
-        tabla_show["Total por pagar"] = tabla_show[total_cols].fillna(0).sum(axis=1)
-        tabla_show = tabla_show.rename(columns={"Pendiente": "Pendiente GC"})
-        cols_front = ["Parcela", "Propietario"]
-        cols_rest = [c for c in tabla_show.columns if c not in cols_front]
-        tabla_show = tabla_show[cols_front + cols_rest]
-
-        pie_gc = tabla_show[tabla_show["Pendiente GC"] > 0][["Parcela", "Pendiente GC"]].copy()
-        if "Pendiente mantención" in tabla_show.columns:
-            pie_mant = tabla_show[tabla_show["Pendiente mantención"] > 0][["Parcela", "Pendiente mantención"]].copy()
-        else:
-            pie_mant = pd.DataFrame(columns=["Parcela", "Pendiente mantención"])
-        proj_cols = [c for c in tabla_show.columns if c.startswith("Pendiente ") and c not in ("Pendiente mantención", "Pendiente GC")]
-        if proj_cols:
-            pie_proj = tabla_show[["Parcela"] + proj_cols].copy()
-            pie_proj["Pendiente proyecto"] = pie_proj[proj_cols].sum(axis=1)
-            pie_proj = pie_proj[pie_proj["Pendiente proyecto"] > 0][["Parcela", "Pendiente proyecto"]]
-        else:
-            pie_proj = pd.DataFrame(columns=["Parcela", "Pendiente proyecto"])
-
-        fig_gc = None
-        fig_m = None
-        fig_p = None
-        fig_acum = None
-        fig_cost_cat = None
-        fig_cost_prov = None
-
-        df_cost_r = _load(COSTOS_CSV_URL, data_cache_version, {"monto", "proveedor", "cc"})
-        s_ing = build_series_mensual_ingresos(df_ing_o)
-        s_cost = build_series_mensual_costos(df_cost_r)
-        df_m = (
-            s_ing.merge(s_cost, on="periodo", how="outer")
-            .fillna(0)
-            .sort_values("periodo")
-        )
-        df_m["neto"] = df_m["ingresos"] - df_m["costos"].abs()
-        df_m["anio"] = pd.to_datetime(df_m["periodo"] + "-01", errors="coerce").dt.year
-        df_y = (
-            df_m.groupby("anio", as_index=False)[["ingresos", "costos", "neto"]]
-            .sum()
-            .fillna(0)
-        )
-        df_y["costos"] = df_y["costos"].abs()
-
-        total_ing = float(df_y["ingresos"].sum()) if not df_y.empty else 0.0
-        total_cost = float(df_y["costos"].sum()) if not df_y.empty else 0.0
-        total_neto = float(df_y["neto"].sum()) if not df_y.empty else 0.0
-        best_year = int(df_y.sort_values("neto", ascending=False)["anio"].iloc[0]) if not df_y.empty else 0
-        total_gc = float(gc_total_parcela * 20) if gc_total_parcela else 0.0
-        pendiente_total_all = float(total_pendiente + pendiente_mant + pendiente_proy)
-        pct_no_pago = (pendiente_total_all / total_gc) * 100 if total_gc > 0 else 0.0
-
-        kpi_data = {
-            "total_ing": total_ing,
-            "total_cost": total_cost,
-            "total_neto": total_neto,
-            "pendiente_total": pendiente_total_all,
-            "pct_no_pago": pct_no_pago,
-            "best_year": best_year,
-        }
-
-        try:
-            import plotly.express as px
-            import plotly.graph_objects as go
-        except Exception:
-            pass
-        else:
-            if not pie_gc.empty:
-                fig_gc = px.pie(
-                    pie_gc,
-                    names="Parcela",
-                    values="Pendiente GC",
-                    title="Distribución pendiente GC por parcela",
-                    hole=0.35,
-                    color_discrete_sequence=["#0B1F2A", "#1F4F5B", "#2C5B4A", "#3A6B5A", "#8DA2C8", "#A4463F"],
-                )
-                fig_gc.update_traces(textinfo="percent+label")
-                fig_gc.update_layout(height=380, margin=dict(l=5, r=5, t=40, b=10), legend_title_text="Parcela")
-            if not pie_mant.empty:
-                fig_m = px.pie(
-                    pie_mant,
-                    names="Parcela",
-                    values="Pendiente mantención",
-                    title="Distribución pendiente mantención",
-                    hole=0.35,
-                    color_discrete_sequence=["#2C5B4A", "#3A6B5A", "#8DA2C8", "#0B1F2A", "#1F4F5B", "#A4463F"],
-                )
-                fig_m.update_traces(textinfo="percent+label")
-                fig_m.update_layout(height=380, margin=dict(l=5, r=5, t=40, b=10), legend_title_text="Parcela")
-            if not pie_proj.empty:
-                fig_p = px.pie(
-                    pie_proj,
-                    names="Parcela",
-                    values="Pendiente proyecto",
-                    title="Distribución pendiente proyecto",
-                    hole=0.35,
-                    color_discrete_sequence=["#A4463F", "#8DA2C8", "#3A6B5A", "#2C5B4A", "#1F4F5B", "#0B1F2A"],
-                )
-                fig_p.update_traces(textinfo="percent+label")
-                fig_p.update_layout(height=380, margin=dict(l=5, r=5, t=40, b=10), legend_title_text="Parcela")
-
-            df_long = df_y.melt(
-                id_vars=["anio"],
-                value_vars=["ingresos", "costos", "neto"],
-                var_name="tipo",
-                value_name="monto",
-            )
-            fig_acum = px.bar(
-                df_long,
-                x="anio",
-                y="monto",
-                color="tipo",
-                barmode="group",
-                title="Ingresos, Costos y Neto — Acumulado por año",
-                labels={"anio": "Año", "monto": "Monto (CLP)", "tipo": ""},
-                color_discrete_map={"ingresos": "#2C5B4A", "costos": "#A4463F", "neto": "#8DA2C8"},
-            )
-            fig_acum.update_layout(hovermode="x unified", height=520)
-            fig_acum.update_traces(
-                texttemplate="%{y:,.0f}",
-                textposition="inside",
-                textfont=dict(color="white", size=11),
-                cliponaxis=False,
-            )
-
-            cols_cost = list(df_cost_r.columns)
-            col_monto_c = _pick_col(cols_cost, ["monto", "total", "importe", "valor"])
-            col_cc = _pick_col(cols_cost, ["cc", "categoria", "rubro"])
-            col_prov = _pick_col(cols_cost, ["proveedor"])
-            tmp_cost = None
-            if col_monto_c:
-                tmp_cost = df_cost_r.copy()
-                tmp_cost["monto_norm"] = _parse_monto_series(tmp_cost[col_monto_c])
-
-            if tmp_cost is not None and col_cc:
-                cat = (
-                    tmp_cost.groupby(col_cc, as_index=False)["monto_norm"]
-                    .sum()
-                    .sort_values("monto_norm", ascending=False)
-                )
-                cat["cum_pct"] = cat["monto_norm"].cumsum() / cat["monto_norm"].sum() * 100
-                fig_cost_cat = go.Figure()
-                fig_cost_cat.add_trace(go.Bar(
-                    x=cat[col_cc].head(12),
-                    y=cat["monto_norm"].head(12),
-                    name="Costo",
-                    marker_color="#2C5B4A",
-                    text=[f"{v:,.0f}" for v in cat["monto_norm"].head(12)],
-                    textposition="inside",
-                    textfont=dict(color="white", size=11),
-                ))
-                fig_cost_cat.add_trace(go.Scatter(
-                    x=cat[col_cc].head(12),
-                    y=cat["cum_pct"].head(12),
-                    name="% acumulado",
-                    yaxis="y2",
-                    mode="lines+markers",
-                    line=dict(color="#0B1F2A", width=2),
-                ))
-                fig_cost_cat.update_layout(
-                    title="Costo por categoría",
-                    yaxis=dict(title="Costo (CLP)"),
-                    yaxis2=dict(title="% acumulado", overlaying="y", side="right"),
-                    hovermode="x unified",
-                    height=420,
-                )
-
-            if tmp_cost is not None and col_prov:
-                prov = (
-                    tmp_cost.groupby(col_prov, as_index=False)["monto_norm"]
-                    .sum()
-                    .assign(monto_abs=lambda d: d["monto_norm"].abs())
-                    .query("monto_abs > 0")
-                    .sort_values("monto_abs", ascending=False)
-                    .head(12)
-                )
-                fig_cost_prov = px.pie(
-                    prov,
-                    names=col_prov,
-                    values="monto_abs",
-                    title="Costos por proveedor (top 12)",
-                    hole=0.35,
-                    color_discrete_sequence=["#0B1F2A", "#153A52", "#1F4F5B", "#1E3D36", "#2C5B4A", "#3A6B5A"],
-                )
-                fig_cost_prov.update_traces(textinfo="percent+label")
-                fig_cost_prov.update_layout(height=420, legend_title_text="Proveedor")
-
-        report_pdf = _build_obligaciones_report_pdf_bytes(
-            kpi_data,
-            fig_acum,
-            tabla_show,
-            fig_gc,
-            fig_m,
-            fig_p,
-            fig_cost_cat,
-            fig_cost_prov,
-        )
-        return report_pdf
+    def _shared_pdf():
+        from control_obligaciones_pdf import build_control_pdf
+        return build_control_pdf(snapshot.ledger, snapshot.payments, snapshot.annual, snapshot.alerts, snapshot.review,
+            {"Búsqueda": "Todas las parcelas", "Concepto": "Todos", "Estado": "Todos"}, URLS,
+            revision=snapshot.revision, captured_at=snapshot.captured_at)
 
     if selected_section == "General":
         with st.spinner("Cargando datos generales..."):
@@ -1416,7 +693,7 @@ def run_streamlit():
 
         df_m = pd.merge(serie_ing, serie_cost, on="periodo", how="outer").fillna(0)
         df_m = df_m.sort_values("periodo")
-        df_m["neto"] = df_m["ingresos"] - df_m["costos"].abs()
+        df_m["neto"] = df_m["ingresos"] + df_m["costos"]
         df_m["anio"] = pd.to_datetime(df_m["periodo"] + "-01", errors="coerce").dt.year
 
         df_y = (
@@ -1424,135 +701,33 @@ def run_streamlit():
             .sum()
             .fillna(0)
         )
-        df_y["costos"] = df_y["costos"].abs()
+        df_y["costos"] = -df_y["costos"]
 
-        total_ing = float(df_y["ingresos"].sum()) if not df_y.empty else 0.0
-        total_cost = float(df_y["costos"].sum()) if not df_y.empty else 0.0
-        total_neto = float(df_y["neto"].sum()) if not df_y.empty else 0.0
+        total_ing = float(snapshot.totals["ingresos"])
+        total_cost = float(snapshot.totals["egresos_netos"])
+        total_neto = float(snapshot.totals["caja"])
         best_year = int(df_y.sort_values("neto", ascending=False)["anio"].iloc[0]) if not df_y.empty else 0
-        pendiente_proveedores = 0.0
+        pendiente_proveedores = float(snapshot.totals["proveedores"])
+        banco_futuro = float(snapshot.totals["caja_tras_proveedores"])
 
-        try:
-            df_por_pagar = _load(
-                POR_PAGAR_CSV_URL,
-                data_cache_version,
-                {"motivo", "presupuesto", "abono", "pendiente_a_proveedor"},
-            )
-            col_pend_prov = _pick_col(list(df_por_pagar.columns), ["pendiente_a_proveedor", "pendiente_proveedores"])
-            if col_pend_prov:
-                pendiente_proveedores = float(_parse_monto_series(df_por_pagar[col_pend_prov]).sum())
-        except Exception:
-            pendiente_proveedores = 0.0
-        banco_futuro = total_neto - pendiente_proveedores
-
-        # KPI de pendientes (desde Obligaciones)
-        oblig_anual_g = pd.DataFrame(columns=["anio", "gc_total"])
-        try:
-            df_obl_g = _load(OBLIGACIONES_CSV_URL, data_cache_version, {"ano", "anio", "año", "parcela", "gc"})
-            df_ing_g2 = _load(INGRESOS_CSV_URL, data_cache_version, {"fecha", "parcela", "abono"})
-            cols_ing_o = list(df_ing_g2.columns)
-            cand_concepto = ["detalle", "concepto", "glosa", "descripcion", "tipo", "categoria", "cc", "ccc", "medio"]
-            concepto_col_val = next((c for c in cand_concepto if c in cols_ing_o), None)
-            oblig_anual_g, tabla_g = build_obligaciones_vs_pagos(
-                df_obl_g,
-                df_ing_g2,
-                concepto_col=concepto_col_val,
-                include_keywords=["gasto", "gc"],
-                exclude_keywords=["proyecto"],
-            )
-            if not tabla_g.empty:
-                gc_total_parcela = float(tabla_g["gc_total"].max())
-                total_gc = gc_total_parcela * 20
-                total_pagado_gc = float(tabla_g["pagado"].sum())
-                pendiente_gc = float(tabla_g["pendiente"].clip(lower=0).sum())
-                pct_no_pago = (pendiente_gc / total_gc) * 100 if total_gc > 0 else 0.0
-                pendiente_mant = 0.0
-                pendiente_proy = 0.0
-
-                col_cc_ing = _pick_col(cols_ing_o, ["cc", "categoria", "rubro", "ccc"])
-                col_abono_ing = _pick_col(cols_ing_o, ["abono"])
-                col_parc_ing = _pick_col(cols_ing_o, ["parcela"])
-                if col_parc_ing and col_abono_ing:
-                    ing_all = df_ing_g2.copy()
-                    ing_all["parcela"] = pd.to_numeric(
-                        ing_all[col_parc_ing].astype(str).str.replace(r"[^\d]", "", regex=True),
-                        errors="coerce",
-                    )
-                    ing_all["monto_norm"] = _parse_monto_series(ing_all[col_abono_ing])
-                    ing_all = ing_all.dropna(subset=["parcela", "monto_norm"])
-
-                    # Pendiente mantención
-                    df_mant_g = _load_mantencion(MANTENCION_CSV_URL, data_cache_version)
-                    if not df_mant_g.empty and col_cc_ing:
-                        mant = df_mant_g.groupby("parcela", as_index=False)["mantencion"].sum()
-                        cc_text = (
-                            ing_all[col_cc_ing]
-                            .astype(str)
-                            .str.lower()
-                            .str.replace("á", "a")
-                            .str.replace("é", "e")
-                            .str.replace("í", "i")
-                            .str.replace("ó", "o")
-                            .str.replace("ú", "u")
-                            .str.replace("ñ", "n")
-                        )
-                        mask_mant = cc_text.str.contains("mantencion", regex=False) | cc_text.str.contains("mantenimiento", regex=False)
-                        pagos_m = (
-                            ing_all[mask_mant]
-                            .groupby("parcela", as_index=False)["monto_norm"]
-                            .sum()
-                            .rename(columns={"monto_norm": "pagado_mant"})
-                        )
-                        mant = mant.merge(pagos_m, on="parcela", how="left").fillna({"pagado_mant": 0})
-                        pendiente_mant = float((mant["mantencion"] - mant["pagado_mant"]).clip(lower=0).sum())
-
-                    # Pendiente proyecto por CC desde TD 2.3
-                    df_td_g = _load_td23(TD23_CSV_URL, data_cache_version)
-                    if not df_td_g.empty and col_cc_ing:
-                        ing_cc = ing_all.copy()
-                        ing_cc["cc_norm"] = ing_cc[col_cc_ing].astype(str).str.lower()
-                        parcelas = sorted(tabla_g["parcela"].dropna().unique().tolist())
-                        for _, row in df_td_g.iterrows():
-                            cc_name = str(row.get("cc", "")).strip()
-                            if not cc_name:
-                                continue
-                            monto_cc = float(_parse_monto_series(pd.Series([row.get("monto")])).iloc[0] or 0)
-                            if monto_cc == 0:
-                                continue
-                            mask_cc = ing_cc["cc_norm"].str.contains(cc_name.lower(), regex=False)
-                            pagos_cc = (
-                                ing_cc[mask_cc]
-                                .groupby("parcela", as_index=False)["monto_norm"]
-                                .sum()
-                                .set_index("parcela")
-                            )
-                            pagos_series = pagos_cc["monto_norm"].reindex(parcelas, fill_value=0)
-                            pendiente_proy += float((monto_cc - pagos_series).clip(lower=0).sum())
-
-                pendiente_total = pendiente_gc + pendiente_mant + pendiente_proy
-            else:
-                pendiente_gc = 0.0
-                pendiente_total = 0.0
-                pendiente_mant = 0.0
-                pendiente_proy = 0.0
-                pct_no_pago = 0.0
-        except Exception:
-            pendiente_gc = 0.0
-            pendiente_total = 0.0
-            pendiente_mant = 0.0
-            pendiente_proy = 0.0
-            pct_no_pago = 0.0
+        oblig_anual_g, tabla_g = _canonical()
+        gc_ledger = snapshot.ledger[snapshot.ledger.Concepto.eq("Gastos comunes")]
+        pendiente_gc = float(gc_ledger.Pendiente.sum())
+        pendiente_mant = float(snapshot.ledger.loc[snapshot.ledger.Concepto.eq("Mantención"), "Pendiente"].sum())
+        pendiente_proy = float(snapshot.ledger.loc[snapshot.ledger.Concepto.eq("Proyecto"), "Pendiente"].sum())
+        pendiente_total = float(snapshot.totals["pendiente"])
+        pct_no_pago = pendiente_gc / gc_ledger.Cargo.sum() * 100 if gc_ledger.Cargo.sum() else 0.
 
         general_report_df = pd.DataFrame(
             [
-                ["Total ingresos", f"${total_ing:,.0f}"],
-                ["Total costos", f"${total_cost:,.0f}"],
-                ["Neto acumulado", f"${total_neto:,.0f}"],
-                ["Banco estimado futuro", f"${banco_futuro:,.0f}"],
-                ["Pendiente total", f"${pendiente_total:,.0f}"],
-                ["Pendiente GC", f"${pendiente_gc:,.0f}"],
-                ["Pendiente mantención", f"${pendiente_mant:,.0f}"],
-                ["Pendiente proyecto", f"${pendiente_proy:,.0f}"],
+                ["Total ingresos", f"{_money_clp(total_ing)}"],
+                ["Total costos", f"{_money_clp(total_cost)}"],
+                ["Neto acumulado", f"{_money_clp(total_neto)}"],
+                ["Caja tras proveedores", f"{_money_clp(banco_futuro)}"],
+                ["Pendiente total", f"{_money_clp(pendiente_total)}"],
+                ["Pendiente GC", f"{_money_clp(pendiente_gc)}"],
+                ["Pendiente mantención", f"{_money_clp(pendiente_mant)}"],
+                ["Pendiente proyecto", f"{_money_clp(pendiente_proy)}"],
                 ["Mejor año", str(best_year)],
             ],
             columns=["Indicador", "Valor"],
@@ -1574,7 +749,7 @@ def run_streamlit():
             try:
                 st.download_button(
                     "Descargar reporte (PDF)",
-                    data=_df_to_pdf_bytes(general_report_df, "Reporte general"),
+                    data=_df_to_pdf_bytes(general_report_df, "Reporte general", snapshot.revision, snapshot.captured_at),
                     file_name="reporte_general_condominio.pdf",
                     mime="application/pdf",
                     key="download_general_pdf",
@@ -1587,7 +762,7 @@ def run_streamlit():
                 _kpi_tile(
                     "↗",
                     "Total ingresos",
-                    f"${total_ing:,.0f}",
+                    f"{_money_clp(total_ing)}",
                     "Suma histórica",
                     "green",
                     "0,28 20,18 38,21 56,10 76,22 96,4 116,15 136,10 156,21",
@@ -1595,7 +770,7 @@ def run_streamlit():
                 _kpi_tile(
                     "⊥",
                     "Total costos",
-                    f"${total_cost:,.0f}",
+                    f"{_money_clp(total_cost)}",
                     "Suma histórica",
                     "red",
                     "0,20 20,19 38,21 56,8 76,20 96,9 116,18 136,13 156,23",
@@ -1603,7 +778,7 @@ def run_streamlit():
                 _kpi_tile(
                     "◔",
                     "Pendiente de pago total",
-                    f"${pendiente_total:,.0f}",
+                    f"{_money_clp(pendiente_total)}",
                     "GC + mantención + proyecto",
                     "violet",
                     "0,25 20,13 38,17 56,11 76,18 96,2 116,16 136,9 156,21",
@@ -1611,8 +786,8 @@ def run_streamlit():
                 _kpi_tile(
                     "●",
                     "Pendiente a proveedores",
-                    f"${pendiente_proveedores:,.0f}",
-                    "Pestaña Por pagar",
+                    f"{_money_clp(pendiente_proveedores)}",
+                    "Costos · Estado No pagado",
                     "teal",
                     "0,20 156,20",
                 ),
@@ -1638,14 +813,14 @@ def run_streamlit():
             f"""
             <div class="dash-hero">
               <div>
-                <div class="dash-hero-eyebrow">NETO ACUMULADO - BANCO</div>
-                <div class="dash-hero-value">${total_neto:,.0f}</div>
+                <div class="dash-hero-eyebrow">CAJA CALCULADA</div>
+                <div class="dash-hero-value">{_money_clp(total_neto)}</div>
                 <div class="dash-hero-note">↗&nbsp;&nbsp;Resultado histórico acumulado: ingresos menos costos</div>
               </div>
               <div class="dash-hero-divider"></div>
               <div>
-                <div class="dash-hero-label">BANCO FUTURO SIN CUENTAS POR PAGAR</div>
-                <div class="dash-hero-secondary-value">${banco_futuro:,.0f}</div>
+                <div class="dash-hero-label">CAJA TRAS PAGAR PROVEEDORES</div>
+                <div class="dash-hero-secondary-value">{_money_clp(banco_futuro)}</div>
                 <div class="dash-hero-sub">⚖&nbsp;&nbsp;Neto acumulado menos pendiente a proveedores</div>
               </div>
               <div class="bank-art" aria-hidden="true">
@@ -1853,7 +1028,7 @@ def run_streamlit():
             <div class="finance-section-row">
               <div class="finance-section-title">Resumen económico del condominio</div>
               <div class="finance-section-actions">
-                <div class="finance-filter-pill"><span>2021 - 2026</span><span>⌄</span></div>
+                <div class="finance-filter-pill"><span>Histórico de la fuente activa</span></div>
                 <div class="finance-filter-btn"><span>≡</span><span>Filtros</span></div>
                 <div class="finance-tool">⋮</div>
               </div>
@@ -1874,7 +1049,7 @@ def run_streamlit():
             }
 
             def _money(v: float) -> str:
-                return f"${v:,.0f}"
+                return f"{_money_clp(v)}"
 
             def _money_compact(v: float) -> str:
                 abs_v = abs(float(v or 0))
@@ -1883,7 +1058,7 @@ def run_streamlit():
                     return f"{sign}${abs_v / 1_000_000:.1f}M"
                 if abs_v >= 1_000:
                     return f"{sign}${abs_v / 1_000:.0f}K"
-                return f"{sign}${abs_v:,.0f}"
+                return f"{sign}{_money_clp(abs_v)}"
 
             def _axis_ticks(values) -> tuple[list[float], list[str]]:
                 vals = pd.Series(values).pipe(pd.to_numeric, errors="coerce").fillna(0)
@@ -1988,7 +1163,7 @@ def run_streamlit():
                             """,
                             unsafe_allow_html=True,
                         )
-                        st.plotly_chart(_make_year_bars(chart_data, chart_title), use_container_width=True, config={"displayModeBar": False})
+                        st.plotly_chart(_make_year_bars(chart_data, chart_title), width="stretch", config={"displayModeBar": False})
 
             year_colors = {
                 2025: "#073f4a",
@@ -2030,7 +1205,7 @@ def run_streamlit():
                 "<div class=\"finance-card-title\">Resumen por año <span class=\"finance-info\">i</span></div>"
                 "<div class=\"year-table-wrap\">"
                 "<table class=\"year-table\">"
-                "<thead><tr><th>Año</th><th>Obligación por año</th><th>Ingresos (CLP)</th><th>Costos (CLP)</th><th>Neto (CLP)</th></tr></thead>"
+                "<thead><tr><th>Año</th><th>GC por parcela (CLP)</th><th>Ingresos (CLP)</th><th>Costos (CLP)</th><th>Neto (CLP)</th></tr></thead>"
                 f"<tbody>{''.join(table_rows)}</tbody>"
                 "</table>"
                 "</div>"
@@ -2103,673 +1278,24 @@ def run_streamlit():
                     )
                     donut_col, legend_col = st.columns([0.95, 0.75])
                     with donut_col:
-                        st.plotly_chart(fig_pie_y, use_container_width=True, config={"displayModeBar": False})
+                        st.plotly_chart(fig_pie_y, width="stretch", config={"displayModeBar": False})
                     with legend_col:
                         st.markdown(legend_html, unsafe_allow_html=True)
 
-    if selected_section == "Ingresos V2.3":
-        st.markdown(
-            """
-            <style>
-            .ing-compact-title {
-              color:#071326;
-              font-size:17px;
-              line-height:1.15;
-              font-weight:900;
-              margin:0 0 14px 0;
-            }
-            .ing-compact-section {
-              color:#071326;
-              font-size:14px;
-              line-height:1.2;
-              font-weight:900;
-              margin:18px 0 10px 0;
-            }
-            </style>
-            <h1 class="ing-compact-title">Ingresos — Análisis técnico</h1>
-            """,
-            unsafe_allow_html=True,
-        )
-        with st.spinner("Cargando ingresos..."):
-            df_ing = _load(INGRESOS_CSV_URL, data_cache_version, {"fecha", "parcela", "abono"})
+    if selected_section in ("Ingresos V2.3", "Costos"):
+        from condominio_traceability import render_transactions
+        render_transactions(st, snapshot, "ingresos" if selected_section == "Ingresos V2.3" else "costos")
 
-        cols = list(df_ing.columns)
-        col_parcela = "parcela" if "parcela" in cols else None
-        col_monto = next((c for c in cols if c.startswith("abono")), None)
-        col_fecha = _pick_col(cols, ["fecha"])
-        col_concepto = next((c for c in ["detalle", "concepto", "glosa", "descripcion", "tipo", "categoria", "cc", "ccc", "medio"] if c in cols), None)
+    if selected_section == "Control de obligaciones":
+        from control_obligaciones import render_control
 
-        if not col_parcela or not col_monto:
-            st.error("No pude identificar columnas de parcela y abono. Selecciónalas manualmente.")
-            col_parcela = st.selectbox("Columna parcela", cols, key="sel_parcela")
-            col_monto = st.selectbox("Columna monto/abono", cols, key="sel_monto")
-
-        base = df_ing.copy()
-        base["monto_norm"] = _parse_monto_series(base[col_monto])
-        base["parcela_norm"] = pd.to_numeric(
-            base[col_parcela].astype(str).str.replace(r"[^\d]", "", regex=True),
-            errors="coerce",
-        )
-        if col_fecha:
-            base["fecha_norm"] = pd.to_datetime(base[col_fecha], dayfirst=True, errors="coerce")
-            base["anio"] = base["fecha_norm"].dt.year
-            base["mes"] = base["fecha_norm"].dt.month
-            base["periodo"] = base["fecha_norm"].dt.to_period("M").astype(str)
-        base = base.dropna(subset=["monto_norm", "parcela_norm"])
-
-        years = sorted([int(y) for y in base["anio"].dropna().unique().tolist()]) if "anio" in base.columns else []
-        sel_years = years
-        sel_parcelas = []
-        sel_conceptos = sorted(base[col_concepto].dropna().astype(str).unique().tolist()) if col_concepto else []
-
-        filt = base.copy()
-        if "anio" in base.columns and sel_years:
-            filt = filt[filt["anio"].isin(sel_years)]
-        if sel_parcelas:
-            filt = filt[filt["parcela_norm"].isin(sel_parcelas)]
-        if col_concepto and sel_conceptos:
-            filt = filt[filt[col_concepto].astype(str).isin(sel_conceptos)]
-
-        total_ing = float(filt["monto_norm"].sum())
-        n_reg = int(len(filt))
-        avg_mensual = float(filt.groupby("periodo")["monto_norm"].sum().mean()) if "periodo" in filt.columns and not filt.empty else 0.0
-        top_parc = (
-            filt.groupby("parcela_norm")["monto_norm"].sum().sort_values(ascending=False).index[0]
-            if not filt.empty else "-"
-        )
-        # Ingresos GC vs Mantención vs Proyectos
-        if col_concepto:
-            texto_conc = filt[col_concepto].astype(str).str.lower()
-            ing_gc = float(filt[texto_conc.str.contains("gasto", regex=False) | texto_conc.str.contains("gc", regex=False)]["monto_norm"].sum())
-            ing_mant = float(
-                filt[
-                    texto_conc.str.contains("mantencion", regex=False)
-                    | texto_conc.str.contains("mantenimiento", regex=False)
-                ]["monto_norm"].sum()
-            )
-            ing_proy = float(filt[texto_conc.str.contains("proyecto", regex=False)]["monto_norm"].sum())
-        else:
-            ing_gc = 0.0
-            ing_mant = 0.0
-            ing_proy = 0.0
-
-        st.markdown(
-            """
-            <style>
-            .kpi-row {display:flex;gap:16px;overflow-x:auto;padding-bottom:6px;margin:8px 0 18px 0;}
-            .kpi-card {min-width:220px;flex:0 0 220px;background:#fff;border:1px solid #E2E8F0;border-radius:16px;padding:14px 16px;box-shadow:0 2px 12px rgba(15,23,42,0.06);position:relative;}
-            .kpi-card:before {content:"";position:absolute;left:0;top:0;height:100%;width:6px;border-radius:16px 0 0 16px;}
-            .kpi-title {font-size:11px;letter-spacing:0.08em;color:#6B7280;font-weight:700;}
-            .kpi-value {font-size:22px;font-weight:800;margin-top:6px;}
-            .kpi-sub {font-size:11px;color:#94A3B8;margin-top:6px;}
-            .kpi-green:before {background:#22C55E;}
-            .kpi-navy:before {background:#0B1F2A;}
-            .kpi-teal:before {background:#2C5B4A;}
-            .kpi-red:before {background:#EF4444;}
-            </style>
-            """,
-            unsafe_allow_html=True,
-        )
-        st.markdown(
-            f"""
-            <div class="kpi-row">
-              <div class="kpi-card kpi-green">
-                <div class="kpi-title">TOTAL INGRESOS</div>
-                <div class="kpi-value">${total_ing:,.0f}</div>
-                <div class="kpi-sub">Suma filtrada</div>
-              </div>
-              <div class="kpi-card kpi-teal">
-                <div class="kpi-title">INGRESOS GC</div>
-                <div class="kpi-value">${ing_gc:,.0f}</div>
-                <div class="kpi-sub">Solo gasto común</div>
-              </div>
-              <div class="kpi-card kpi-teal">
-                <div class="kpi-title">INGRESOS MANTENCIÓN</div>
-                <div class="kpi-value">${ing_mant:,.0f}</div>
-                <div class="kpi-sub">Solo mantención</div>
-              </div>
-              <div class="kpi-card kpi-red">
-                <div class="kpi-title">INGRESOS PROYECTO</div>
-                <div class="kpi-value">${ing_proy:,.0f}</div>
-                <div class="kpi-sub">Solo proyectos</div>
-              </div>
-              <div class="kpi-card kpi-navy">
-                <div class="kpi-title">PROMEDIO MENSUAL</div>
-                <div class="kpi-value">${avg_mensual:,.0f}</div>
-                <div class="kpi-sub">Ingreso medio por mes</div>
-              </div>
-              <div class="kpi-card kpi-teal">
-                <div class="kpi-title">PARCELA TOP</div>
-                <div class="kpi-value">{top_parc}</div>
-                <div class="kpi-sub">Mayor aporte</div>
-              </div>
-              <div class="kpi-card kpi-red">
-                <div class="kpi-title">REGISTROS</div>
-                <div class="kpi-value">{n_reg}</div>
-                <div class="kpi-sub">Transacciones filtradas</div>
-              </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-        pagos = (
-            filt.groupby("parcela_norm", as_index=False)["monto_norm"]
-            .sum()
-            .rename(columns={"parcela_norm": "parcela", "monto_norm": "pagos_total"})
-            .sort_values("parcela")
-        )
-        rango = list(range(17, 37))
-        pagos = (
-            pd.DataFrame({"parcela": rango})
-            .merge(pagos, on="parcela", how="left")
-            .fillna({"pagos_total": 0})
-        )
-
-        try:
-            import plotly.express as px
-        except Exception:
-            st.error("Falta Plotly para el gráfico avanzado. Instala con: pip install plotly")
-        else:
-            muted_palette = [
-                "#0B1F2A",
-                "#153A52",
-                "#1F4F5B",
-                "#1E3D36",
-                "#2C5B4A",
-                "#3A6B5A",
-                "#1D2B3A",
-                "#2A3F4D",
-            ]
-            fig = px.bar(
-                pagos,
-                x="parcela",
-                y="pagos_total",
-                text="pagos_total",
-                title="Pagos por parcela (17–36)",
-                labels={"parcela": "Parcela", "pagos_total": "Monto abonado (CLP)"},
-                color_discrete_sequence=muted_palette,
-            )
-            fig.update_traces(
-                texttemplate="$%{text:,.0f}",
-                textposition="inside",
-                textfont_color="white",
-                hovertemplate="Parcela %{x}<br>Monto CLP %{y:,.0f}<extra></extra>",
-            )
-            fig.update_layout(hovermode="x unified", height=520)
-            fig.update_layout(title_font_size=11)
-            fig.update_xaxes(type="category", tickmode="linear", dtick=1)
-            st.plotly_chart(fig, use_container_width=True)
-
-            if "periodo" in filt.columns:
-                per = (
-                    filt.groupby("periodo", as_index=False)["monto_norm"]
-                    .sum()
-                    .sort_values("periodo")
-                )
-                fig_p = px.bar(
-                    per,
-                    x="periodo",
-                    y="monto_norm",
-                    title="Ingresos por periodo",
-                    labels={"periodo": "Periodo", "monto_norm": "Ingreso (CLP)"},
-                    color_discrete_sequence=muted_palette,
-                )
-                fig_p.update_layout(hovermode="x unified", height=420, title_font_size=11)
-                st.plotly_chart(fig_p, use_container_width=True)
-
-        st.markdown('<h2 class="ing-compact-section">Detalle de ingresos (filtrado)</h2>', unsafe_allow_html=True)
-        st.dataframe(filt, use_container_width=True)
-
-    if selected_section == "Costos":
-        with st.spinner("Cargando costos..."):
-            df_cost = _load(COSTOS_CSV_URL, data_cache_version, {"monto", "proveedor", "cc"})
-
-        cols_cost = list(df_cost.columns)
-        col_monto = _pick_col(cols_cost, ["monto", "total", "importe", "valor"])
-        col_fecha = _pick_col(cols_cost, ["d", "fecha"])
-        col_cc = _pick_col(cols_cost, ["cc", "categoria", "rubro"])
-        col_ccc = _pick_col(cols_cost, ["ccc", "subcategoria"])
-        col_prov = _pick_col(cols_cost, ["proveedor"])
-        col_detalle = _pick_col(cols_cost, ["detalle", "detalle_trabajo", "trabajo", "descripcion", "glosa", "concepto"])
-        col_pago = _pick_col(cols_cost, ["forma_de_pago", "forma pago", "medio_pago", "medio", "pago"])
-
-        if not col_monto:
-            st.error("No se encontró columna de monto en Costos.")
-            return
-
-        base = df_cost.copy()
-        base["monto_norm"] = _parse_monto_series(base[col_monto])
-        if col_fecha:
-            base["fecha_norm"] = pd.to_datetime(base[col_fecha], dayfirst=True, errors="coerce")
-            base["anio"] = base["fecha_norm"].dt.year
-            base["mes"] = base["fecha_norm"].dt.month
-            base["periodo"] = base["fecha_norm"].dt.to_period("M").astype(str)
-        base = base.dropna(subset=["monto_norm"])
-
-        years = sorted([int(y) for y in base["anio"].dropna().unique().tolist()]) if "anio" in base.columns else []
-        sel_years = years
-        sel_cats = sorted(base[col_cc].dropna().astype(str).unique().tolist()) if col_cc else []
-        sel_prov = sorted(base[col_prov].dropna().astype(str).unique().tolist()) if col_prov else []
-
-        filt = base.copy()
-        if "anio" in base.columns and sel_years:
-            filt = filt[filt["anio"].isin(sel_years)]
-        if col_cc and sel_cats:
-            filt = filt[filt[col_cc].astype(str).isin(sel_cats)]
-        if col_prov and sel_prov:
-            filt = filt[filt[col_prov].astype(str).isin(sel_prov)]
-
-        total_cost = float(filt["monto_norm"].sum())
-        n_reg = int(len(filt))
-        avg_mensual = float(filt.groupby("periodo")["monto_norm"].sum().mean()) if "periodo" in filt.columns and not filt.empty else 0.0
-        top_prov = (
-            filt.groupby(col_prov)["monto_norm"].sum().abs().sort_values(ascending=False).index[0]
-            if col_prov and not filt.empty else "-"
-        )
-        top_cat = (
-            filt.groupby(col_cc)["monto_norm"].sum().abs().sort_values(ascending=False).index[0]
-            if col_cc and not filt.empty else "-"
-        )
-
-        def _fmt_cost(v: float) -> str:
-            try:
-                value = float(v)
-            except Exception:
-                value = 0.0
-            sign = "-" if value < 0 else ""
-            return f"{sign}${abs(value):,.0f}"
-
-        def _fmt_cost_short(v: float) -> str:
-            try:
-                value = float(v)
-            except Exception:
-                value = 0.0
-            sign = "-" if value < 0 else ""
-            abs_v = abs(value)
-            if abs_v >= 1_000_000:
-                return f"{sign}${abs_v / 1_000_000:.2f}M"
-            if abs_v >= 1_000:
-                return f"{sign}${abs_v / 1_000:.0f}K"
-            return f"{sign}${abs_v:,.0f}"
-
-        def _fmt_date_cost(v) -> str:
-            if pd.isna(v):
-                return ""
-            try:
-                return pd.to_datetime(v).strftime("%Y-%m-%d")
-            except Exception:
-                return str(v)
-
-        def _clip_label(value: object, max_len: int = 22) -> str:
-            text = str(value or "-").strip()
-            return text if len(text) <= max_len else text[: max_len - 1] + "…"
-
-        cost_report_df = pd.DataFrame(
-            [
-                ["Total costos", _fmt_cost(total_cost)],
-                ["Registros", f"{n_reg:,}"],
-                ["Promedio mensual", _fmt_cost(avg_mensual)],
-                ["Top categoría", str(top_cat)],
-                ["Top proveedor", str(top_prov)],
-            ],
-            columns=["Indicador", "Valor"],
-        )
-
-        st.markdown(
-            """
-            <style>
-            .cost-page-head { margin:0 0 8px 0; }
-            .cost-page-title { color:#071326; font-size:18px; line-height:1.22; font-weight:900; margin:0; overflow-wrap:anywhere; }
-            .cost-section-title { color:#52647f; font-size:12px; line-height:1.3; font-weight:600; margin:8px 0 6px 0; }
-            .cost-kpi-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin:0 0 10px 0; }
-            .cost-kpi-card {
-              background:#fff; border:1px solid #e1e8f1; border-radius:10px; min-height:82px;
-              box-shadow:0 7px 18px rgba(15,23,42,.06); padding:9px 11px; display:grid;
-              grid-template-columns:34px minmax(0,1fr); gap:10px; align-items:center;
-            }
-            .cost-kpi-icon { width:32px; height:32px; border-radius:9px; display:grid; place-items:center; font-size:16px; font-weight:900; }
-            .cost-kpi-label { color:#52647f; font-size:9px; font-weight:800; margin-bottom:4px; }
-            .cost-kpi-value { color:#071326; font-size:15px; line-height:1.15; font-weight:900; overflow-wrap:anywhere; }
-            .cost-kpi-sub { color:#667085; font-size:9px; font-weight:700; margin-top:5px; }
-            .cost-red { color:#e12626; } .cost-teal { color:#0089a3; } .cost-green { color:#128a55; }
-            .cost-bg-red { background:#ffe5e8; color:#e12626; } .cost-bg-teal { background:#e4f5f8; color:#0089a3; }
-            .cost-bg-green { background:#e3f4eb; color:#128a55; }
-            .cost-card {
-              background:#fff; border:1px solid #e1e8f1; border-radius:10px;
-              box-shadow:0 7px 18px rgba(15,23,42,.06); padding:6px 10px; margin-bottom:6px;
-            }
-            .cost-card-head { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:2px; min-height:22px; }
-            .cost-card h2.cost-card-title,
-            h2.cost-card-title,
-            .cost-card-title {
-              color:#071326 !important; font-size:12px !important; line-height:1.15 !important;
-              font-weight:900 !important; margin:0 !important; padding:0 !important;
-              letter-spacing:0 !important;
-            }
-            .cost-info { color:#7b879d; border:1px solid #9aa6ba; width:13px; height:13px; border-radius:50%; display:inline-grid; place-items:center; font-size:8px; font-weight:900; margin-left:4px; vertical-align:middle; }
-            .cost-tools { display:flex; gap:5px; }
-            .cost-tool { width:21px; height:21px; border:1px solid #dfe7f1; border-radius:7px; display:grid; place-items:center; color:#253247; font-size:10px; font-weight:900; background:#fff; box-shadow:0 2px 7px rgba(15,23,42,.05); }
-            .cost-panel-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-            .cost-provider-wrap { display:grid; grid-template-columns:minmax(0,1fr) 205px; gap:10px; align-items:center; }
-            .cost-provider-legend-title, .cost-provider-row { display:grid; grid-template-columns:1fr 72px; gap:8px; align-items:center; }
-            .cost-provider-legend-title { color:#667085; font-size:9px; font-weight:900; margin-bottom:3px; }
-            .cost-provider-row { color:#172033; font-size:9px; font-weight:800; padding:2px 0; border-bottom:1px solid #e8edf4; }
-            .cost-dot { width:8px; height:8px; display:inline-block; border-radius:999px; margin-right:6px; }
-            .cost-panel-footer { display:flex; justify-content:space-between; align-items:center; color:#071326; font-size:10px; font-weight:800; border:1px solid #e8edf4; border-radius:7px; padding:5px 9px; margin-top:5px; }
-            .cost-table-toolbar { display:flex; justify-content:space-between; align-items:center; gap:10px; margin:2px 0 6px 0; }
-            .cost-table-actions { display:flex; gap:6px; align-items:center; }
-            .cost-search, .cost-filter {
-              height:26px; border:1px solid #dfe7f1; border-radius:7px; background:#fff; display:flex;
-              align-items:center; gap:6px; color:#667085; font-size:10px; font-weight:700; padding:0 10px;
-            }
-            .cost-search { min-width:190px; justify-content:flex-start; }
-            .cost-filter { min-width:82px; justify-content:center; color:#263449; }
-            .cost-table-wrap { border:1px solid #e1e8f1; border-radius:10px; overflow:hidden; }
-            .cost-table { width:100%; border-collapse:separate; border-spacing:0; color:#172033; font-size:9px; }
-            .cost-table th {
-              height:24px; background:#f7f9fc; color:#52647f; text-align:left; font-weight:900;
-              padding:0 7px; border-bottom:1px solid #e2e8f0; border-right:1px solid #e8edf4; white-space:nowrap;
-            }
-            .cost-table td {
-              height:23px; padding:0 7px; border-bottom:1px solid #eef2f7; border-right:1px solid #eef2f7;
-              font-weight:800; white-space:nowrap;
-            }
-            .cost-num { text-align:right; color:#e12626; }
-            .cost-footer { min-height:34px; padding:0 9px; display:flex; justify-content:space-between; align-items:center; color:#667085; font-size:9px; font-weight:800; border-top:1px solid #e8edf4; }
-            .cost-pages { display:flex; align-items:center; gap:5px; }
-            .cost-page { min-height:22px; min-width:24px; border:1px solid #dfe7f1; border-radius:6px; display:flex; align-items:center; justify-content:center; padding:0 7px; background:#fff; color:#263449; }
-            .cost-page.active { background:#00728d; color:#fff; border-color:#00728d; }
-            @media(max-width:1200px){ .cost-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.cost-panel-grid,.cost-provider-wrap{grid-template-columns:1fr;}.cost-table-wrap{overflow-x:auto;} }
-            @media(max-width:760px){ .cost-kpi-grid{grid-template-columns:1fr;}.cost-table-toolbar{display:block;}.cost-table-actions{margin-top:10px; flex-wrap:wrap;}.cost-search{min-width:100%;} }
-            </style>
-            """,
-            unsafe_allow_html=True,
-        )
-
-        cost_head_left, cost_head_right = st.columns([1, 0.28], gap="large")
-        with cost_head_left:
-            st.markdown(
-                """
-                <div class="cost-page-head">
-                  <h1 class="cost-page-title">Costos - Análisis técnico</h1>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-        with cost_head_right:
-            try:
-                st.download_button(
-                    "Descargar reporte (PDF)",
-                    data=_df_to_pdf_bytes(cost_report_df, "Reporte de costos"),
-                    file_name="reporte_costos_condominio.pdf",
-                    mime="application/pdf",
-                    key="download_costos_pdf",
-                )
-            except RuntimeError as e:
-                st.error(str(e))
-
-        st.markdown(
-            f"""
-            <div class="cost-section-title">Resumen general</div>
-            <div class="cost-kpi-grid">
-              <div class="cost-kpi-card">
-                <div class="cost-kpi-icon cost-bg-red">$</div>
-                <div><div class="cost-kpi-label">Total costos</div><div class="cost-kpi-value cost-red">{_fmt_cost(total_cost)}</div><div class="cost-kpi-sub">Suma filtrada</div></div>
-              </div>
-              <div class="cost-kpi-card">
-                <div class="cost-kpi-icon cost-bg-teal">▥</div>
-                <div><div class="cost-kpi-label">Promedio mensual</div><div class="cost-kpi-value cost-teal">{_fmt_cost(avg_mensual)}</div><div class="cost-kpi-sub">Costo medio por mes</div></div>
-              </div>
-              <div class="cost-kpi-card">
-                <div class="cost-kpi-icon cost-bg-green">◇</div>
-                <div><div class="cost-kpi-label">Top categoría</div><div class="cost-kpi-value cost-green">{html.escape(_clip_label(top_cat, 24))}</div><div class="cost-kpi-sub">Mayor gasto</div></div>
-              </div>
-              <div class="cost-kpi-card">
-                <div class="cost-kpi-icon cost-bg-green">♙</div>
-                <div><div class="cost-kpi-label">Top proveedor</div><div class="cost-kpi-value cost-green">{html.escape(_clip_label(top_prov, 24))}</div><div class="cost-kpi-sub">Mayor gasto</div></div>
-              </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-        try:
-            import plotly.graph_objects as go
-            from plotly.subplots import make_subplots
-        except Exception:
-            st.error("Falta Plotly para el gráfico avanzado. Instala con: pip install plotly")
-        else:
-            muted_palette = [
-                "#0B1F2A",
-                "#153A52",
-                "#1F4F5B",
-                "#1E3D36",
-                "#2C5B4A",
-                "#3A6B5A",
-                "#1D2B3A",
-                "#2A3F4D",
-            ]
-
-            if "periodo" in filt.columns and not filt.empty:
-                per = filt.groupby("periodo", as_index=False)["monto_norm"].sum().sort_values("periodo")
-                per["movil_6m"] = per["monto_norm"].rolling(6, min_periods=1).mean()
-                per["acumulado"] = per["monto_norm"].cumsum()
-                fig_p = make_subplots(specs=[[{"secondary_y": True}]])
-                fig_p.add_trace(
-                    go.Bar(
-                        x=per["periodo"],
-                        y=per["monto_norm"],
-                        name="Costo (CLP)",
-                        marker=dict(color="#0b2638"),
-                        text=per["monto_norm"].map(_fmt_cost_short),
-                        textposition="inside",
-                        textfont=dict(color="white", size=9),
-                        hovertemplate="Periodo %{x}<br>Costo %{y:,.0f} CLP<extra></extra>",
-                    ),
-                    secondary_y=False,
-                )
-                fig_p.add_trace(
-                    go.Scatter(
-                        x=per["periodo"],
-                        y=per["movil_6m"],
-                        name="Promedio móvil (6m)",
-                        mode="lines",
-                        line=dict(color="#0089a3", width=2, dash="dash"),
-                    ),
-                    secondary_y=False,
-                )
-                fig_p.add_trace(
-                    go.Scatter(
-                        x=per["periodo"],
-                        y=per["acumulado"],
-                        name="Total acumulado (CLP)",
-                        mode="lines",
-                        line=dict(color="#57c0cf", width=2),
-                        fill="tozeroy",
-                        fillcolor="rgba(87,192,207,.12)",
-                    ),
-                    secondary_y=True,
-                )
-                fig_p.update_layout(
-                    height=175,
-                    barmode="relative",
-                    hovermode="x unified",
-                    plot_bgcolor="#ffffff",
-                    paper_bgcolor="#ffffff",
-                    margin=dict(l=36, r=38, t=4, b=28),
-                    legend=dict(orientation="h", y=1.02, x=0, font=dict(size=8)),
-                    font=dict(family="Inter, Arial, sans-serif", color="#52647f", size=8),
-                )
-                fig_p.update_xaxes(showgrid=False, tickangle=0, nticks=8)
-                fig_p.update_yaxes(title_text="Costo (CLP)", gridcolor="#e5ebf3", zeroline=True, zerolinecolor="#ccd6e3", secondary_y=False)
-                fig_p.update_yaxes(title_text="Total acumulado (CLP)", gridcolor="#eef2f7", secondary_y=True)
-                st.markdown(
-                    """
-                    <div class="cost-card">
-                      <div class="cost-card-head"><h2 class="cost-card-title">1. Costos por periodo <span class="cost-info">i</span></h2><div class="cost-tools"><span class="cost-tool">▣</span><span class="cost-tool">⌕</span><span class="cost-tool">⊞</span><span class="cost-tool">⛶</span></div></div>
-                    """,
-                    unsafe_allow_html=True,
-                )
-                st.plotly_chart(fig_p, use_container_width=True, config={"displayModeBar": False})
-                st.markdown("</div>", unsafe_allow_html=True)
-
-            panel_left, panel_right = st.columns(2, gap="medium")
-
-            if col_cc and not filt.empty:
-                cat = filt.groupby(col_cc, as_index=False)["monto_norm"].sum()
-                cat["abs_monto"] = cat["monto_norm"].abs()
-                cat = cat.sort_values("abs_monto", ascending=False).head(8)
-                cat["cum_pct"] = cat["abs_monto"].cumsum() / max(float(cat["abs_monto"].sum()), 1.0) * 100
-                fig_c = go.Figure()
-                fig_c.add_trace(go.Bar(
-                    x=cat[col_cc].astype(str),
-                    y=-cat["abs_monto"],
-                    name="Costo (CLP)",
-                    marker_color="#2C5B4A",
-                    text=(-cat["abs_monto"]).map(_fmt_cost_short),
-                    textposition="inside",
-                    textfont=dict(color="white"),
-                ))
-                fig_c.add_trace(go.Scatter(
-                    x=cat[col_cc].astype(str),
-                    y=cat["cum_pct"],
-                    name="% acumulado",
-                    yaxis="y2",
-                    mode="lines+markers",
-                    line=dict(color="#0B1F2A", width=2),
-                ))
-                fig_c.update_layout(
-                    yaxis=dict(title="Costo (CLP)", gridcolor="#e5ebf3", zeroline=True),
-                    yaxis2=dict(title="% acumulado", overlaying="y", side="right", range=[0, 105], ticksuffix="%"),
-                    hovermode="x unified",
-                    height=155,
-                    margin=dict(l=34, r=34, t=4, b=24),
-                    plot_bgcolor="#ffffff",
-                    paper_bgcolor="#ffffff",
-                    legend=dict(orientation="h", y=1.02, x=0, font=dict(size=8)),
-                    font=dict(family="Inter, Arial, sans-serif", color="#52647f", size=8),
-                )
-                with panel_left:
-                    st.markdown(
-                        """
-                        <div class="cost-card">
-                          <div class="cost-card-head"><h2 class="cost-card-title">2. Costos por categoría <span class="cost-info">i</span></h2><div class="cost-tools"><span class="cost-tool">▣</span><span class="cost-tool">⛶</span></div></div>
-                        """,
-                        unsafe_allow_html=True,
-                    )
-                    st.plotly_chart(fig_c, use_container_width=True, config={"displayModeBar": False})
-                    st.markdown(
-                        f"<div class=\"cost-panel-footer\"><span>Total costos: <span class=\"cost-red\">{_fmt_cost(total_cost)}</span></span><span>{len(cat):,} categorías</span></div></div>",
-                        unsafe_allow_html=True,
-                    )
-
-            if col_prov and not filt.empty:
-                prov = filt.groupby(col_prov, as_index=False)["monto_norm"].sum()
-                prov["monto_abs"] = prov["monto_norm"].abs()
-                prov = prov[prov["monto_abs"] > 0].sort_values("monto_abs", ascending=False).head(12)
-                provider_colors = [muted_palette[i % len(muted_palette)] for i in range(len(prov))]
-                fig_v = go.Figure(
-                    data=[
-                        go.Pie(
-                            labels=prov[col_prov].astype(str),
-                            values=prov["monto_abs"],
-                            hole=0.42,
-                            sort=False,
-                            marker=dict(colors=provider_colors, line=dict(color="rgba(255,255,255,.22)", width=1)),
-                            texttemplate="%{percent}",
-                            textposition="inside",
-                            textfont=dict(color="white", size=10),
-                            hovertemplate="%{label}<br>Costo CLP %{value:,.0f}<br>%{percent}<extra></extra>",
-                        )
-                    ]
-                )
-                fig_v.update_layout(
-                    height=155,
-                    showlegend=False,
-                    margin=dict(l=0, r=0, t=0, b=0),
-                    paper_bgcolor="#ffffff",
-                    plot_bgcolor="#ffffff",
-                    annotations=[dict(text=f"Total<br><b>{_fmt_cost(total_cost)}</b>", showarrow=False, x=0.5, y=0.5, font=dict(size=9, color="#172033"))],
-                )
-                legend_rows = []
-                for i, (_, row) in enumerate(prov.iterrows()):
-                    legend_rows.append(
-                        "<div class=\"cost-provider-row\">"
-                        f"<div><span class=\"cost-dot\" style=\"background:{provider_colors[i]}\"></span>{html.escape(_clip_label(row[col_prov], 23))}</div>"
-                        f"<div style=\"text-align:right;\">{_fmt_cost(float(row['monto_norm']))}</div>"
-                        "</div>"
-                    )
-                with panel_right:
-                    st.markdown(
-                        """
-                        <div class="cost-card">
-                          <div class="cost-card-head"><h2 class="cost-card-title">3. Costos por proveedor (top 12) <span class="cost-info">i</span></h2><div class="cost-tools"><span class="cost-tool">▣</span><span class="cost-tool">⛶</span></div></div>
-                          <div class="cost-provider-wrap">
-                        """,
-                        unsafe_allow_html=True,
-                    )
-                    donut_col, legend_col = st.columns([0.9, 1.0])
-                    with donut_col:
-                        st.plotly_chart(fig_v, use_container_width=True, config={"displayModeBar": False})
-                    with legend_col:
-                        st.markdown(
-                            "<div class=\"cost-provider-legend-title\"><div>Proveedor</div><div style=\"text-align:right;\">Costo (CLP)</div></div>"
-                            + "".join(legend_rows),
-                            unsafe_allow_html=True,
-                        )
-                    st.markdown("</div><div class=\"cost-panel-footer\" style=\"justify-content:center;\">Ver todos los proveedores&nbsp;&nbsp;›</div></div>", unsafe_allow_html=True)
-
-        table_df = filt.copy()
-        table_df["__fecha_show"] = table_df["fecha_norm"].map(_fmt_date_cost) if "fecha_norm" in table_df.columns else ""
-        table_df["__periodo_show"] = table_df["periodo"].astype(str) if "periodo" in table_df.columns else ""
-        table_df["__detalle_show"] = table_df[col_detalle].astype(str) if col_detalle else ""
-        table_df["__monto_show"] = table_df["monto_norm"].map(_fmt_cost)
-        table_df["__proveedor_show"] = table_df[col_prov].astype(str) if col_prov else ""
-        table_df["__categoria_show"] = table_df[col_cc].astype(str) if col_cc else ""
-        table_df["__cc_show"] = table_df[col_ccc].astype(str) if col_ccc else ""
-        table_df["__pago_show"] = table_df[col_pago].astype(str) if col_pago else ""
-        rows = []
-        for _, row in table_df.sort_values("__fecha_show").head(10).iterrows():
-            rows.append(
-                "<tr>"
-                f"<td>{html.escape(str(row['__fecha_show']))}</td>"
-                f"<td>{html.escape(str(row['__periodo_show']))}</td>"
-                f"<td>{html.escape(_clip_label(row['__detalle_show'], 32))}</td>"
-                f"<td class=\"cost-num\">{html.escape(str(row['__monto_show']))}</td>"
-                f"<td>{html.escape(_clip_label(row['__proveedor_show'], 26))}</td>"
-                f"<td>{html.escape(_clip_label(row['__categoria_show'], 18))}</td>"
-                f"<td>{html.escape(_clip_label(row['__cc_show'], 16))}</td>"
-                f"<td>{html.escape(_clip_label(row['__pago_show'], 18))}</td>"
-                f"<td>{html.escape(str(row['__fecha_show']))}</td>"
-                "</tr>"
-            )
-        st.markdown(
-            f"""
-            <div class="cost-card">
-              <div class="cost-table-toolbar">
-                <h2 class="cost-card-title">4. Detalle de costos (filtrado) <span class="cost-info">i</span></h2>
-                <div class="cost-table-actions">
-                  <div class="cost-search">⌕ <span>Buscar en la tabla...</span></div>
-                  <div class="cost-filter">≡ <span>Filtros</span></div>
-                  <span class="cost-tool">⇩</span>
-                  <span class="cost-tool">⋮</span>
-                </div>
-              </div>
-              <div class="cost-table-wrap">
-                <table class="cost-table">
-                  <thead><tr><th>Fecha</th><th>Periodo</th><th>Detalle trabajo</th><th class="cost-num">Monto (CLP)</th><th>Proveedor</th><th>Categoría</th><th>CC</th><th>Forma de pago</th><th>Fecha</th></tr></thead>
-                  <tbody>{''.join(rows)}</tbody>
-                </table>
-                <div class="cost-footer">
-                  <div>Mostrando 1 a {min(10, len(table_df)):,} de {len(table_df):,} registros</div>
-                  <div class="cost-pages"><span>Filas por página</span><span class="cost-page">10⌄</span><span class="cost-page">‹ Anterior</span><span class="cost-page active">1</span><span class="cost-page">2</span><span class="cost-page">3</span><span class="cost-page">…</span><span class="cost-page">Siguiente ›</span></div>
-                </div>
-              </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+        render_control(st, _load, _load_td23, {
+            "obligaciones": OBLIGACIONES_CSV_URL,
+            "ingresos": INGRESOS_CSV_URL,
+            "propietarios": PROPIETARIOS_CSV_URL,
+            "mantencion": MANTENCION_CSV_URL,
+            "proyectos": TD23_CSV_URL,
+        }, data_cache_version, _parse_monto_series, prepared=snapshot)
 
     if selected_section == "Obligaciones":
         with st.spinner("Cargando obligaciones y pagos..."):
@@ -2790,13 +1316,7 @@ def run_streamlit():
         include_list = ["gasto", "gc"]
         exclude_list = ["proyecto"]
 
-        oblig_anual, tabla = build_obligaciones_vs_pagos(
-            df_obl,
-            df_ing_o,
-            concepto_col=concepto_col_val,
-            include_keywords=include_list,
-            exclude_keywords=exclude_list,
-        )
+        oblig_anual, tabla = _canonical()
         if tabla.empty:
             st.warning("No se pudieron construir obligaciones vs pagos. Revisa columnas de año/parcela/gc.")
         else:
@@ -2804,98 +1324,14 @@ def run_streamlit():
             fig_m = None
             fig_p = None
 
-            tabla_full = tabla.copy()
-            tabla_full["pendiente_pos"] = tabla_full["pendiente"].clip(lower=0)
-            tabla_full["saldo_favor"] = (-tabla_full["pendiente"]).clip(lower=0)
-
-            # Mantención por parcela
-            if not df_mant.empty:
-                df_mant = df_mant.groupby("parcela", as_index=False)["mantencion"].sum()
-                tabla_full = tabla_full.merge(df_mant, on="parcela", how="left").fillna({"mantencion": 0})
-
-                # Resta pagos de mantención desde ingresos (cc = mantención/mantenimiento)
-                cols_ing = list(df_ing_o.columns)
-                col_cc_ing = _pick_col(cols_ing, ["cc", "categoria", "rubro", "ccc"])
-                col_abono_ing = _pick_col(cols_ing, ["abono"])
-                col_parc_ing = _pick_col(cols_ing, ["parcela"])
-                if col_cc_ing and col_abono_ing and col_parc_ing:
-                    ing_m = df_ing_o.copy()
-                    ing_m["parcela"] = pd.to_numeric(
-                        ing_m[col_parc_ing].astype(str).str.replace(r"[^\d]", "", regex=True),
-                        errors="coerce",
-                    )
-                    ing_m["monto_norm"] = _parse_monto_series(ing_m[col_abono_ing])
-                    ing_m = ing_m.dropna(subset=["parcela", "monto_norm"])
-                    cc_text = (
-                        ing_m[col_cc_ing]
-                        .astype(str)
-                        .str.lower()
-                        .str.replace("á", "a")
-                        .str.replace("é", "e")
-                        .str.replace("í", "i")
-                        .str.replace("ó", "o")
-                        .str.replace("ú", "u")
-                        .str.replace("ñ", "n")
-                    )
-                    mask_mant = cc_text.str.contains("mantencion", regex=False) | cc_text.str.contains("mantenimiento", regex=False)
-                    pagos_mant = (
-                        ing_m[mask_mant]
-                        .groupby("parcela", as_index=False)["monto_norm"]
-                        .sum()
-                        .rename(columns={"monto_norm": "pagado_mant"})
-                    )
-                    tabla_full = tabla_full.merge(pagos_mant, on="parcela", how="left").fillna({"pagado_mant": 0})
-                    tabla_full["mantencion"] = (tabla_full["mantencion"] - tabla_full["pagado_mant"]).clip(lower=0)
-                    tabla_full = tabla_full.drop(columns=["pagado_mant"])
-
-                tabla_full = tabla_full.rename(columns={"mantencion": "Mantención"})
-
-            # Cruce por CC desde TD 2.3
-            if not df_td.empty:
-                cols_ing = list(df_ing_o.columns)
-                col_cc_ing = _pick_col(cols_ing, ["cc", "categoria", "rubro", "ccc"])
-                if col_cc_ing:
-                    df_ing_cc = df_ing_o.copy()
-                    df_ing_cc["parcela"] = pd.to_numeric(
-                        df_ing_cc[_pick_col(cols_ing, ["parcela"])].astype(str).str.replace(r"[^\d]", "", regex=True),
-                        errors="coerce",
-                    )
-                    df_ing_cc["monto_norm"] = _parse_monto_series(df_ing_cc[_pick_col(cols_ing, ["abono"])])
-                    df_ing_cc = df_ing_cc.dropna(subset=["parcela", "monto_norm"])
-                    df_ing_cc["cc_norm"] = df_ing_cc[col_cc_ing].astype(str).str.lower()
-
-                    df_td = df_td.copy()
-                    df_td["cc_norm"] = df_td["cc"].astype(str).str.lower()
-                    df_td["monto_norm"] = _parse_monto_series(df_td["monto"])
-
-                    for _, row in df_td.iterrows():
-                        cc_name = str(row["cc"]).strip()
-                        if not cc_name:
-                            continue
-                        monto_cc = float(row["monto_norm"]) if pd.notna(row["monto_norm"]) else 0.0
-                        if monto_cc == 0:
-                            continue
-                        mask_cc = df_ing_cc["cc_norm"].str.contains(cc_name.lower(), regex=False)
-                        pagos_cc = (
-                            df_ing_cc[mask_cc]
-                            .groupby("parcela", as_index=False)["monto_norm"]
-                            .sum()
-                            .rename(columns={"monto_norm": "pagado_cc"})
-                        )
-                        col_name = f"Pendiente {cc_name}"
-                        tabla_full = tabla_full.merge(pagos_cc, on="parcela", how="left").fillna({"pagado_cc": 0})
-                        tabla_full[col_name] = (monto_cc - tabla_full["pagado_cc"]).clip(lower=0)
-                        tabla_full = tabla_full.drop(columns=["pagado_cc"])
+            tabla_full = snapshot.legacy_balances()
 
             gc_total_parcela = float(tabla_full["gc_total"].max()) if not tabla_full.empty else 0.0
             total_pendiente = float(tabla_full["pendiente_pos"].sum()) if not tabla_full.empty else 0.0
             total_favor = float(tabla_full["saldo_favor"].sum()) if not tabla_full.empty else 0.0
             pendiente_mant = float(tabla_full["Mantención"].sum()) if "Mantención" in tabla_full.columns else 0.0
             col_pend_prov_o = _pick_col(list(df_por_pagar_o.columns), ["pendiente_a_proveedor", "pendiente_proveedores"])
-            pendiente_proveedores = (
-                float(_parse_monto_series(df_por_pagar_o[col_pend_prov_o]).sum())
-                if col_pend_prov_o else 0.0
-            )
+            pendiente_proveedores = float(snapshot.totals["proveedores"])
             # Suma pendientes por CC (ej. Proyecto)
             cc_cols = [c for c in tabla_full.columns if c.startswith("Pendiente ")]
             pendiente_proy = float(tabla_full[cc_cols].sum().sum()) if cc_cols else 0.0
@@ -3206,7 +1642,7 @@ def run_streamlit():
                 try:
                     st.download_button(
                         "Descargar reporte (PDF)",
-                        data=_df_to_pdf_bytes(obl_report_base, "Reporte de obligaciones"),
+                        data=_shared_pdf(),
                         file_name="reporte_obligaciones_condominio.pdf",
                         mime="application/pdf",
                         key="download_obligaciones_pdf",
@@ -3263,7 +1699,7 @@ def run_streamlit():
 
             def _fmt_money(v) -> str:
                 try:
-                    return f"${float(v):,.0f}"
+                    return ("$" + f"{0 if abs(float(v)) < .5 else float(v):,.0f}".replace(",", "."))
                 except Exception:
                     return "$0"
 
@@ -3648,7 +2084,7 @@ def run_streamlit():
 
                 def _fmt_gc_money(v) -> str:
                     try:
-                        return f"${float(v):,.0f}"
+                        return ("$" + f"{0 if abs(float(v)) < .5 else float(v):,.0f}".replace(",", "."))
                     except Exception:
                         return "$0"
 
@@ -3776,7 +2212,7 @@ def run_streamlit():
                             unsafe_allow_html=True,
                         )
                         if fig_pie is not None:
-                            st.plotly_chart(fig_pie, use_container_width=True, config={"displayModeBar": False})
+                            st.plotly_chart(fig_pie, width="stretch", config={"displayModeBar": False})
                             st.markdown(top_debtor_html, unsafe_allow_html=True)
                             st.markdown("<div class=\"gc-detail-link\"><span>Ver detalle de parcelas</span><span>›</span></div>", unsafe_allow_html=True)
                         else:
@@ -3787,10 +2223,6 @@ def run_streamlit():
                 <div class="obl-section-head">
                   <h2 class="obl-section-title">Resumen de obligaciones por propietario</h2>
                   <div class="obl-section-subtitle">Pagos, pendientes y total por pagar consolidado por parcela</div>
-                </div>
-                <div class="obl-actions">
-                  <div class="obl-search">⌕ <span>Buscar por propietario o parcela...</span></div>
-                  <div class="obl-filter">≡ <span>Filtros</span></div>
                 </div>
                 <div class="obl-kpi-grid">
                   <div class="obl-kpi-card">
@@ -3872,7 +2304,7 @@ def run_streamlit():
                 "</table>"
                 "<div class=\"obl-footer\">"
                 f"<div>Mostrando 1 a {len(tabla_show):,} de {len(tabla_show):,} registros</div>"
-                "<div class=\"obl-page-controls\"><span>Filas por página</span><span class=\"rows-select\">20⌄</span><span class=\"page-btn\">‹ Anterior</span><span class=\"page-btn active\">1</span><span class=\"page-btn\">2</span><span class=\"page-btn\">Siguiente ›</span></div>"
+                ""
                 "</div>"
                 "</div>"
             )
@@ -4039,7 +2471,7 @@ def run_streamlit():
             else:
                 def _fmt_money_card(v) -> str:
                     try:
-                        return f"${float(v):,.0f}"
+                        return ("$" + f"{0 if abs(float(v)) < .5 else float(v):,.0f}".replace(",", "."))
                     except Exception:
                         return "$0"
 
@@ -4112,7 +2544,7 @@ def run_streamlit():
                             )
                         ],
                     )
-                    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+                    st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
 
                     row_parts = []
                     for i, (_, r) in enumerate(plot_df.iterrows()):
@@ -4225,11 +2657,11 @@ def run_streamlit():
                     det = det[det["Parcela"] == sel_parcela]
 
                 det_show = det.copy()
-                det_show["Abono"] = det_show["Abono"].map(lambda x: f"${x:,.0f}")
-                st.dataframe(det_show, use_container_width=True, height=520, hide_index=True)
+                det_show["Abono"] = det_show["Abono"].map(lambda x: f"{_money_clp(x)}")
+                st.dataframe(det_show, width="stretch", height=520, hide_index=True)
 
                 try:
-                    pdf_bytes = _df_to_pdf_bytes(det_show, "Detalle de abonos por parcela")
+                    pdf_bytes = _df_to_pdf_bytes(det_show, "Detalle de abonos por parcela", snapshot.revision, snapshot.captured_at)
                     st.download_button(
                         "Descargar PDF",
                         data=pdf_bytes,
@@ -4240,6 +2672,17 @@ def run_streamlit():
                     st.error(str(e))
             else:
                 st.warning("No se pudo construir el detalle de abonos. Revisa columnas de Fecha/Parcela/Abono.")
+
+
+    if selected_section == "Obligaciones":
+        st.subheader("Obligaciones con proveedores · No pagado")
+        st.caption("Costos con Estado No pagado. El auxiliar Deudas proveedores se consulta por separado en Fuentes y control y no se suma a estos compromisos.")
+        suppliers = snapshot.frames["costos"]
+        suppliers = suppliers[suppliers.estado_pago.eq("No pagado")].copy()
+        supplier_view = suppliers[["id","proveedor","detalle","fecha","estado_pago","por_pagar","fila_publicada","fila_origen"]].rename(columns={"id":"ID","proveedor":"Proveedor","detalle":"Trabajo / motivo","fecha":"Fecha registrada","estado_pago":"Estado","por_pagar":"Pendiente","fila_publicada":"Fila publicada","fila_origen":"Fila histórica"})
+        st.dataframe(supplier_view,hide_index=True,width="stretch",column_config={"Pendiente":st.column_config.NumberColumn(format="dollar")})
+        st.download_button("Descargar obligaciones con proveedores · CSV",supplier_view.to_csv(index=False).encode("utf-8-sig"),f"proveedores_{snapshot.revision}.csv","text/csv",key="supplier_export")
+        st.markdown(f"[Consultar Costos · fuente publicada]({COSTOS_CSV_URL})")
 
 
 if __name__ == "__main__":
