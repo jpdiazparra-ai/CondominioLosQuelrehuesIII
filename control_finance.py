@@ -196,7 +196,7 @@ def dashboard_headlines(snapshot,portfolio,as_of=None):
     from zoneinfo import ZoneInfo
     from condominio_data import classify_costs,parse_money
     day=pd.Timestamp(as_of if as_of is not None else datetime.now(ZoneInfo('America/Santiago')).date()).normalize()
-    result={'as_of':day,'receivable':float(portfolio['due']),'debtors':portfolio['debtors'],'count':portfolio['count'],'debtor_share':portfolio['debtor_share'],'cash_today':None,'payables':None,'cash_after_payables':None,'undated_count':0,'future_count':0}
+    result={'as_of':day,'receivable':float(portfolio['due']),'debtors':portfolio['debtors'],'count':portfolio['count'],'debtor_share':portfolio['debtor_share'],'cash_today':None,'income_today':None,'expenses_today':None,'payables':None,'cash_after_payables':None,'undated_count':0,'future_count':0}
     if snapshot is None:return result
     income=snapshot.frames['ingresos']
     costs=classify_costs(snapshot.frames['costos'])
@@ -207,7 +207,26 @@ def dashboard_headlines(snapshot,portfolio,as_of=None):
         result['future_count']+=int(future.sum());result['undated_count']+=int(undated.sum())
         # Recognized entries without a date remain in cash, with a visible note.
         return float(amounts[valid & ~future].sum())
-    cash=recognized(income,'abono')+recognized(costs,'monto')
+    income_today=recognized(income,'abono')
+    expenses_today=-recognized(costs,'monto')
+    cash=income_today-expenses_today
     payables=float(snapshot.totals['proveedores'])
-    result.update(cash_today=cash,payables=payables,cash_after_payables=cash-payables)
+    result.update(cash_today=cash,income_today=income_today,expenses_today=expenses_today,payables=payables,cash_after_payables=cash-payables)
     return result
+
+
+def dashboard_kpis(portfolio,headlines):
+    """Ocho indicadores compartidos por pantalla y PDF; caja al mismo corte diario."""
+    m=portfolio;h=headlines
+    fmt=lambda value:money(value) if value is not None else '—'
+    committed=percent(h['payables']/h['cash_today']) if h['payables'] is not None and h['cash_today'] is not None and h['cash_today']>0 else '—'
+    return [
+        ('Obligaciones emitidas',money(m['charges']),'Según filtros · cargos con ajustes','#7457ce','OE'),
+        ('Ingresos recibidos',fmt(h['income_today']),'Global · recibidos al corte de hoy','#16957f','IR'),
+        ('Egresos netos pagados',fmt(h['expenses_today']),'Global · pagados menos reintegros','#d9803f','EP'),
+        ('Proveedores por pagar',fmt(h['payables']),'Global · Costos No pagado','#8b5ba9','PP'),
+        ('Obligaciones cubiertas',percent(m['coverage']) if m['base'] else '—','Según filtros · abonos / cargos positivos','#16957f','%'),
+        ('Créditos de vecinos',money(m['credit']),'Según filtros · excedentes a favor','#5285bd','CV'),
+        ('Concentración de la deuda',percent(m['top3']) if m['due'] else '—','Según filtros · tres mayores saldos','#7457ce','C3'),
+        ('Caja comprometida con proveedores',committed,'Global · por pagar / caja actual','#b7474d','CC'),
+    ]

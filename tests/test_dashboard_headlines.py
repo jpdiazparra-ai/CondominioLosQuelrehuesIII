@@ -1,6 +1,6 @@
 import unittest
 from condominio_data import build_snapshot
-from control_finance import analyze_portfolio,dashboard_headlines
+from control_finance import analyze_portfolio,dashboard_headlines,dashboard_kpis
 from test_payment_status import status_fixture
 
 
@@ -12,6 +12,10 @@ class DashboardHeadlineTests(unittest.TestCase):
         a=dashboard_headlines(s,full,as_of='2026-11-11')
         b=dashboard_headlines(s,selected,as_of='2026-11-11')
         self.assertEqual(a['cash_today'],2100)
+        self.assertEqual(a['income_today'],3500)
+        self.assertEqual(a['expenses_today'],1400)
+        self.assertEqual(a['income_today'],b['income_today'])
+        self.assertEqual(a['expenses_today'],b['expenses_today'])
         self.assertEqual(a['payables'],100)
         self.assertEqual(a['cash_after_payables'],2000)
         self.assertEqual(a['receivable'],30)
@@ -30,6 +34,9 @@ class DashboardHeadlineTests(unittest.TestCase):
         self.assertEqual(h['cash_today'],2100)
         self.assertEqual(h['cash_after_payables'],2000)
         self.assertEqual(h['future_count'],2)
+        self.assertEqual(h['income_today'],3500)
+        self.assertEqual(h['expenses_today'],1400)
+        self.assertEqual(h['income_today']-h['expenses_today'],h['cash_today'])
 
     def test_recognized_undated_payments_are_included_and_identified(self):
         raw=status_fixture();raw['ingresos'].loc[4,2]=None;raw['costos'].loc[4,2]=None
@@ -37,6 +44,16 @@ class DashboardHeadlineTests(unittest.TestCase):
         h=dashboard_headlines(s,analyze_portfolio(s.ledger,s.payments),as_of='2026-11-11')
         self.assertEqual(h['cash_today'],s.totals['caja'])
         self.assertEqual(h['undated_count'],2)
+
+    def test_committed_cash_ratio_requires_positive_cash(self):
+        s=build_snapshot(status_fixture());m=analyze_portfolio(s.ledger,s.payments)
+        h=dashboard_headlines(s,m,as_of='2026-11-11')
+        self.assertEqual(dashboard_kpis(m,h)[-1][1],'4,8%')
+        for cash in [0,-100,None]:
+            h['cash_today']=cash
+            self.assertEqual(dashboard_kpis(m,h)[-1][1],'—')
+        h['cash_today']=50
+        self.assertEqual(dashboard_kpis(m,h)[-1][1],'200,0%')
 
 
 if __name__=='__main__':unittest.main()

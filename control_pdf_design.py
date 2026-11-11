@@ -5,7 +5,7 @@ from reportlab.lib import colors
 from reportlab.lib.enums import TA_RIGHT
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.platypus import Flowable,Paragraph,Table,TableStyle
-from control_finance import money,percent
+from control_finance import money,percent,dashboard_kpis
 
 NAVY=colors.HexColor('#153e56')
 INK=colors.HexColor('#264a62')
@@ -65,15 +65,14 @@ class CommunityCover(Flowable):
         c.setFillColor(GREEN);c.rect(rx+14,py+61,(panelw-28)*min(1,max(0,m['coverage'])),7,stroke=0,fill=1)
         c.setFillColor(INK);c.setFont('Helvetica-Bold',9);c.drawString(rx+14,py+40,'Pendiente de recaudar: '+money(m['due']))
         c.setFillColor(MUTED);c.setFont('Helvetica',7);c.drawString(rx+14,py+24,'Los abonos se aplican a la obligación que corresponde.');c.drawString(rx+14,py+11,'Los créditos se muestran separados de los saldos por pagar.')
-        c.setFillColor(MUTED);c.setFont('Helvetica-Bold',6.7);c.drawString(0,H-394,'MAGNITUDES DE LA CARTERA / MONTOS EN CLP')
-        c.setFillColor(SOFT);c.roundRect(0,12,W,62,6,stroke=0,fill=1)
-        facts=[('Cargos netos',money(m['charges']),INK),('Abonos registrados',money(m['paid']),INK),('Aplicados a cargos',money(m['applied']),INK),('Créditos a favor',money(m['credit']),colors.HexColor('#387db6')),('Concentración 3 mayores',percent(m['top3']),INK),('Proveedores por pagar',fmt(h['payables']),RED)]
-        for i,(label,value,tone) in enumerate(facts):
-            x=i*W/6+12
-            if i:c.setStrokeColor(LINE);c.line(i*W/6,22,i*W/6,64)
-            c.setFillColor(MUTED);c.setFont('Helvetica',7);c.drawString(x,54,label)
-            c.setFillColor(tone);c.setFont('Helvetica-Bold',14);c.drawString(x,32,value)
-        c.setFillColor(MUTED);c.setFont('Helvetica',6.4);c.drawString(0,0,'Caja y proveedores: globales. Cobranza: filtros de cartera. El saldo disponible no suma cobros futuros.')
+        # Ocho KPI secundarios, en dos filas compactas con el mismo orden de pantalla.
+        for i,(label,value,note,tone,icon) in enumerate(dashboard_kpis(m,h)):
+            x=(i%4)*(W+8)/4;y=12+(1-i//4)*43;cw=(W-24)/4
+            c.setFillColor(SOFT);c.roundRect(x,y,cw,39,4,stroke=0,fill=1)
+            c.setFillColor(MUTED);c.setFont('Helvetica',6.7);c.drawString(x+8,y+29,label)
+            c.setFillColor(colors.HexColor(tone));c.setFont('Helvetica-Bold',11.2);c.drawString(x+8,y+15,value)
+            c.setFillColor(MUTED);c.setFont('Helvetica',5.8);c.drawString(x+8,y+5,note)
+        c.setFillColor(MUTED);c.setFont('Helvetica',6.4);c.drawString(0,0,'Caja, ingresos, egresos y proveedores: globales. Cobranza: según filtros. El saldo no suma cobros futuros.')
         if self.source_url:
             c.setFillColor(GREEN);c.drawRightString(W,0,'Consultar fuente publicada');c.linkURL(self.source_url,(W-105,-2,W,9),relative=1,thickness=0)
 
