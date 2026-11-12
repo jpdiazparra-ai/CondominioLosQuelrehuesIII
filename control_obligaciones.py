@@ -117,30 +117,20 @@ def render_control(st, load, load_projects, urls, version, parse_money, prepared
     latest=payments.Fecha.max()
     date_text=latest.strftime('%d/%m/%Y') if pd.notna(latest) else 'Sin fecha'
     st.caption(f'Base de cobranza: parcelas 17–36 · Último abono del libro Ingresos: {date_text}. Los cargos corresponden al total publicado.')
-    with st.container(border=True):
-        a,b,c=st.columns([2,1.35,1.35])
-        query=a.text_input('Buscar parcela o propietario',placeholder='Parcela, nombre o apellido',key='control_search')
-        concept=b.selectbox('Concepto',['Todos']+sorted(ledger.Concepto.unique()),key='control_concept')
-        state=c.selectbox('Estado de la obligación',['Todos','Pendiente','Al día','A favor'],key='control_status')
     filtered=ledger.copy()
-    if query.strip():
-        q=_text(query)
-        filtered=filtered[filtered.Propietario.map(_text).str.contains(q,regex=False)|filtered.Parcela.astype(str).eq(q)]
-    if concept!='Todos':filtered=filtered[filtered.Concepto.eq(concept)]
-    if state!='Todos':filtered=filtered[filtered.Estado.eq(state)]
     m=analyze_portfolio(filtered,payments)
     headlines=dashboard_headlines(prepared,m)
     global_money=lambda value:money(value) if value is not None else '—'
-    a,b=st.columns([1.2,1.8],gap='large')
+    report_description,report_download=st.columns([1.8,1.2],gap='large')
     try:
         selected_order=st.session_state.get('finance_order','Mayor pendiente')
         selected_cash=st.session_state.get('finance_cash_window','Últimos 12 meses de caja')
         selected_trend=st.session_state.get('finance_window','Últimos 12 meses registrados')
         cash_length=12 if selected_cash.startswith('Últimos 12') else 24 if selected_cash.startswith('Últimos 24') else 0
         trend_length=12 if selected_trend.startswith('Últimos 12') else 24 if selected_trend.startswith('Últimos 24') else 0
-        pdf=build_dashboard_pdf(filtered,payments,prepared,{'Búsqueda':query.strip() or 'Todas las parcelas','Concepto':concept,'Estado':state},order=selected_order,cash_length=cash_length,trend_length=trend_length) if len(filtered) else b''
-        a.download_button('Descargar informe para compartir · PDF',pdf,'informe_obligaciones_condominio.pdf','application/pdf',key='control_pdf_download',type='primary',icon=':material/picture_as_pdf:',width='stretch',disabled=filtered.empty)
-        b.caption('Dashboard hasta conciliación y abonos · KPI, gráficos, panorama completo y flujo de caja global. Respeta filtros, orden y ventanas temporales.')
+        pdf=build_dashboard_pdf(filtered,payments,prepared,{'Búsqueda':'Todas las parcelas','Concepto':'Todos','Estado':'Todos'},order=selected_order,cash_length=cash_length,trend_length=trend_length) if len(filtered) else b''
+        report_download.download_button('Descargar informe para compartir · PDF',pdf,'informe_obligaciones_condominio.pdf','application/pdf',key='control_pdf_download',type='primary',icon=':material/picture_as_pdf:',width='stretch',disabled=filtered.empty)
+        report_description.caption('Dashboard hasta conciliación y abonos · KPI, gráficos, panorama completo y flujo de caja global. Respeta el orden de la cartera y las ventanas temporales.')
     except (ImportError,ValueError,RuntimeError) as exc:st.error(f'No fue posible preparar el informe: {exc}')
     coverage=percent(m['coverage']) if m['base'] else '—'
     hero_items=[
@@ -244,7 +234,21 @@ def render_control(st, load, load_projects, urls, version, parse_money, prepared
         history_cols=[c for c in ['Fecha','Concepto','Abono','medio','id','fila_origen','fila_publicada','Fuente'] if c in payments]
         history=payments[payments.Parcela.eq(parcel)].sort_values('Fecha',ascending=False)[history_cols].rename(columns={'medio':'Medio','id':'ID de origen','fila_origen':'Fila histórica','fila_publicada':'Fila publicada'})
         st.dataframe(history,hide_index=True,width='stretch',column_config={'Fecha':st.column_config.DateColumn(format='DD/MM/YYYY'),'Abono':st.column_config.NumberColumn(format='dollar')})
-        st.download_button('Descargar abonos de la parcela',history.to_csv(index=False).encode('utf-8-sig'),f'abonos_parcela_{parcel}.csv','text/csv',key='control_history_download')
+        from control_obligaciones_pdf import build_table_pdf
+        from condominio_data import PUBLICATION_URL
+
+        history_pdf = history.copy()
+        history_pdf['Abono'] = history_pdf['Abono'].map(lambda value: money(value) if pd.notna(value) else 'Sin dato')
+        history_pdf_bytes = build_table_pdf(
+            history_pdf,
+            f'Abonos del libro de caja · Parcela {parcel}',
+            revision=getattr(prepared, 'revision', ''),
+            captured_at=getattr(prepared, 'captured_at', ''),
+            source_url=PUBLICATION_URL,
+            note=f'Propietario: {account.iloc[0].Propietario} · Total abonado: {money(history["Abono"].sum())}'
+                 + (' · Sin abonos registrados.' if history.empty else ''),
+        )
+        st.download_button('Descargar abonos de la parcela · PDF',history_pdf_bytes,f'abonos_parcela_{parcel}.pdf','application/pdf',key='control_history_download')
     with adjustments_tab:
         if prepared is not None:
             maintenance=prepared.frames['mantencion']
